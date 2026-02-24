@@ -1,12 +1,11 @@
 from typing import Any
 from urllib.parse import unquote
-import re
 import json
 
 from zoe_http.method import HttpMethod
-from zoe_http.request_util.query_params import QueryParams
-from zoe_http.request_util.path_params import PathParams
-from zoe_http.request_util.form_params import FormParams
+from zoe_http._request_util.query_params import QueryParams
+from zoe_http._request_util.path_params import PathParams
+from zoe_http._request_util.form_params import FormParams
 
 class Request:
     def __init__(self: "Request", raw_data: str, client_ip: str) -> None:
@@ -80,14 +79,15 @@ class Request:
     def form_params(self: "Request") -> FormParams:
         return self.__form_params
 
+    def set_path_params(self: "Request", params: dict) -> None:
+        for k, v in params.items():
+            self.__path_params[k] = v
+
     def __parse_query_params(self: "Request", query_string: str) -> None:
         for param in query_string.split("&"):
             if "=" in param:
                 key, value = param.split("=", 1)
                 self.__query_params[key] = unquote(value)
-
-    def __parse_path_params(self: "Request", query_string: str) -> None:
-        print(query_string)
 
     def __parse_request_line(self, request_raw_part: str) -> "Request":
         parts = request_raw_part.split(" ")
@@ -96,9 +96,6 @@ class Request:
         if "?" in full_path:
             self.__route, query_string = full_path.split("?", 1)
             self.__parse_query_params(query_string)
-        elif "{" in full_path:
-            self.__route, query_string = full_path.split("{", 1)
-            self.__parse_path_params(query_string)
         else:
             self.__route = full_path
         
