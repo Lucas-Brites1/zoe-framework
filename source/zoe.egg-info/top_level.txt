@@ -1,2 +1,0 @@
-zoe_http
-zoe_net
