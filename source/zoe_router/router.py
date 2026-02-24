@@ -11,10 +11,12 @@ class Router:
     def add(self: "Router", route: Route) -> None:
         self.__assigned_routes.add(route=route)
 
-    def resolve(self: "Router", method: HttpMethod, endpoint: str) -> Handler:
+    def resolve(self, method: HttpMethod, endpoint: str) -> Handler:
         for route in self.__assigned_routes:
-            if route.method == method and route.endpoint == endpoint:
+            full = self.__prefix + route.endpoint
+            if route.method.value == method.value and full == endpoint:
                 return route.handler
+
         return None
 
     @property
