@@ -2,6 +2,7 @@ from zoe_http.request import Request
 from zoe_http.response import Response
 from zoe_router.router import Router
 from zoe_http.handler import Handler
+from zoe_router.router import Route, Routes, Router
 from zoe_http.middleware import Middleware
 from zoe_http.code import HttpCode
 from zoe_schema.model_schema import Model
@@ -11,15 +12,28 @@ import typing
 
 class Zoe:
     def __init__(self: "Zoe", application_name: str) -> None:
-        self.__routers: list[Router] = []
+        self.__base_router: Router = Router(prefix="")
+        self.__routers: list[Router] = [self.__base_router]
         self.__middlewares: list[Middleware] = []
         self._application_name = application_name
 
-    def use_middleware(self, middleware: Middleware) -> None:
-        self.__middlewares.append(middleware)
-
-    def include_router(self, router: Router) -> None:
-        self.__routers.append(router)
+    def use(self: "Zoe", to_add: Route | Routes | Router | Middleware) -> "Zoe":
+        match type(to_add).__name__:
+            case "Route":
+                self.__base_router.add(route=to_add)
+            case "Routes":
+                for route in to_add:
+                    self.__base_router.add(route=route)
+            case "Router":
+                self.__routers.append(to_add)
+            case "Middleware":
+                self.__middlewares.append(to_add)
+            case _:
+                if hasattr(to_add, '__call__') and not isinstance(to_add, (Route, Routes, Router)):
+                    self.__middlewares.append(to_add)
+                else:
+                    raise TypeError(f"Cannot register type '{type(to_add).__name__}'")
+        return self
 
     def _call_handler(self, handler: Handler, request: Request) -> Response:
         hints = {}
@@ -43,8 +57,9 @@ class Zoe:
     def _resolve(self, request: Request) -> Response:
         def call_handler(req: Request) -> Response:
             for router in self.__routers:
-                handler = router.resolve(method=req.method, endpoint=req.route)
+                (handler, params) = router.resolve(method=req.method, endpoint=req.route)
                 if handler:
+                    request.set_path_params(params=params)
                     return self._call_handler(handler=handler, request=req)
             return Response(http_status_code=HttpCode.NOT_FOUND)
 
