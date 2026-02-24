@@ -4,10 +4,13 @@ from concurrent.futures import ThreadPoolExecutor
 
 from zoe_http.request import Request
 from zoe_http.response import Response
-from zoe_http.code import HttpCode
 from zoe_net.connection import Connection
 from zoe_router.router import Router
+from zoe_router.route import Route
+from zoe_router.routes import Routes
+from zoe_http.middleware import Middleware
 from zoe_application.application import Zoe
+
 
 LOCALHOST = "127.0.0.1"
 class Server:
@@ -22,7 +25,18 @@ class Server:
             self._max_connections = max_connections
             
             self.__router_container: list[Router] = []
-    
+            self.__base_router: Router = Router(prefix="")
+
+    def use(self: "Server", to_add: Route | Routes | Router | Middleware) -> None:
+        match type(to_add).__name__:
+            case "Route":
+                self.__base_router.add(Route(to_add))
+            case "Routes":
+                for route in Routes(to_add):
+                    self.__base_router.add(route=route)
+            case "Router":
+                self.add_router(router=Router(to_add))
+
     def add_router(self: "Server", router: Router) -> None:
         self.__router_container.append(router)
 
