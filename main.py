@@ -5,10 +5,11 @@ from source.zoe_http import request, response,code,method
 from source.zoe_middlewares.logger import Logger
 from source.zoe_middlewares.limiter import Limiter
 
-from source.zoe_schema.model_schema import Model
+from source.zoe_schema.model_schema import Model, Field
+from source.zoe_schema.schema_validators.length import Length
 
 class Pessoa(Model):
-    nome: str
+    nome: str = Field(Length._min(n=4), Length._max(n=100))
     idade: int
 
 class HelloHandler(Handler):
@@ -25,8 +26,8 @@ router: Router = Router(prefix="/teste")
 
 if __name__ == "__main__":
     app: Zoe = Zoe(application_name="pi-api")
-    router.POST(endpoint="/user/{user_id}/{user_password}", handler=PayloadHandler())
-    app.use(router).use(Logger()).use(Limiter()).use(Route.get(endpoint="/padrao", handler=HelloHandler()))
-
+    router.POST(endpoint="/user/{user_id}", handler=PayloadHandler())
+    app.use(router).use(Logger()).use(Limiter())
+    
     server: Server = Server(application=app)
     server.run()            
