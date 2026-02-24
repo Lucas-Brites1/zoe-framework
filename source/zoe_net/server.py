@@ -5,10 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from zoe_http.request import Request
 from zoe_http.response import Response
 from zoe_net.connection import Connection
-from zoe_router.router import Router
-from zoe_router.route import Route
-from zoe_router.routes import Routes
-from zoe_http.middleware import Middleware
+from zoe_http.code import HttpCode
 from zoe_application.application import Zoe
 
 
@@ -24,22 +21,6 @@ class Server:
             self._socket.bind((host, port))
             self._max_connections = max_connections
             
-            self.__router_container: list[Router] = []
-            self.__base_router: Router = Router(prefix="")
-
-    def use(self: "Server", to_add: Route | Routes | Router | Middleware) -> None:
-        match type(to_add).__name__:
-            case "Route":
-                self.__base_router.add(Route(to_add))
-            case "Routes":
-                for route in Routes(to_add):
-                    self.__base_router.add(route=route)
-            case "Router":
-                self.add_router(router=Router(to_add))
-
-    def add_router(self: "Server", router: Router) -> None:
-        self.__router_container.append(router)
-
     def _handle(self, conn: Connection) -> None:
         with conn.socket_connection:
             data = conn.retrieve_data_decoded()
@@ -47,9 +28,13 @@ class Server:
             if not data.strip():
                 return
                 
-            client_ip: str = conn.socket_address[0]    
-            client_request: Request = Request(raw_data=data, client_ip=client_ip)
-            response: Response = self.__app._resolve(request=client_request)
+            try:
+                client_ip: str = conn.socket_address[0]    
+                client_request: Request = Request(raw_data=data, client_ip=client_ip)
+                response: Response = self.__app._resolve(request=client_request)
+            except Exception as e:
+                response = Response(http_status_code=HttpCode.BAD_REQUEST)
+            
             conn.socket_connection.send(response._build())
 
     def run(self: "Server") -> None:
