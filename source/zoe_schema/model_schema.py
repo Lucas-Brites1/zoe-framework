@@ -1,7 +1,24 @@
+from zoe_schema.field_schema import Field
+from zoe_exceptions.schemas_exceptions.schema_unexpected_type import SchemaFieldUnexpectedType
+
 from typing import Any
+import typing
 
 class Model:
   def __init__(self: "Model", **kwargs):
+    hints = typing.get_type_hints(type(self))
+    for field_name, expected_type in hints.items():
+      if field_name in kwargs:
+        value = kwargs[field_name]
+        type_of_value = type(value)
+        if expected_type != type_of_value:
+          raise SchemaFieldUnexpectedType(field_name=field_name, field_expected_type=expected_type, field_actual_type=type_of_value)
+    for field_name, field_def in self.__class__.__dict__.items():
+      if isinstance(field_def, Field) and field_name in kwargs:
+        value = kwargs[field_name]
+        for validator in field_def.validators:
+            validator.__call__(value=value, field_name=field_name)
+
     for key, value in kwargs.items():
       setattr(self, key, value)
 
