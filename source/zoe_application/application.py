@@ -6,6 +6,8 @@ from zoe_router.router import Route, Routes, Router
 from zoe_http.middleware import Middleware
 from zoe_http.code import HttpCode
 from zoe_schema.model_schema import Model
+from zoe_exceptions.schemas_exceptions.validation_exception import ValidatorException
+from zoe_exceptions.schemas_exceptions.schema_unexpected_type import SchemaFieldUnexpectedType
 
 import inspect
 import typing
@@ -50,8 +52,14 @@ class Zoe:
           if param in ("return", "request", "self"):
               continue
           if isinstance(tipo, type) and Model.is_model(tipo):
-              kwargs[param] = tipo(**request.body)
-
+            try:
+                kwargs[param] = tipo(**request.body)
+            except ValidatorException as e:
+                return e.to_response(model_name=tipo.__name__)
+            except SchemaFieldUnexpectedType as e:
+                return e.to_response(model_name=tipo.__name__)
+            except Exception as e:
+                print(f"Outra exception: {type(e).__name__}: {e}")
         return handler(request=request, **kwargs)
 
     def _resolve(self, request: Request) -> Response:
