@@ -1,18 +1,22 @@
 from source.zoe_net.server import Server
 from source.zoe_application.application import Zoe
 from source.zoe_router.router import Route, Router, Handler
-from source.zoe_http import request, response,code,method
+from source.zoe_http import request, response,code
 from source.zoe_middlewares.logger import Logger
 from source.zoe_middlewares.limiter import Limiter
 
-from source.zoe_schema.model_schema import Model, Field
+from source.zoe_schema.model_schema import Model
+from source.zoe_schema.field_schema import Field
 from source.zoe_schema.schema_validators.length import Length
 from source.zoe_schema.schema_validators.not_null import NotNull
 from source.zoe_schema.schema_validators.range import Range
+from source.zoe_schema.schema_validators.pattern import Pattern
+from source.zoe_schema.schema_validators.email import Email
 
 class Pessoa(Model):
     nome: str = Field(NotNull(), Length(max=10))
     idade: int = Field(NotNull(), Range(min=0, max=130))
+    email: str = Field(NotNull(), Email())
 
 class HelloHandler(Handler):
     def __call__(self: "HelloHandler", request: request.Request) -> response.Response:
