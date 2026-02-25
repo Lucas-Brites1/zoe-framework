@@ -2,6 +2,7 @@ import socket
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
+from zoe_net._server_util import _ServerUtil
 from zoe_http.request import Request
 from zoe_http.response import Response
 from zoe_net.connection import Connection
@@ -20,14 +21,14 @@ class Server:
             self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self._socket.bind((host, port))
             self._max_connections = max_connections
-            
+
     def _handle(self, conn: Connection) -> None:
         with conn.socket_connection:
             data = conn.retrieve_data_decoded()
             if not data.strip():
                 return
 
-            client_ip: str = conn.socket_address[0]  
+            client_ip: str = conn.socket_address[0] # type: ignore
 
             try:
                 client_request: Request = Request(raw_data=data, client_ip=client_ip)
@@ -35,15 +36,15 @@ class Server:
             except ZoeHttpException as Zhexc:
                 response = Zhexc.to_response()
             except Exception as exc:
-                response = InternalServerException(detail=str(exc)).to_response()        
-            
+                response = InternalServerException(detail=str(exc)).to_response()
+
             conn.socket_connection.sendall(response._build())
 
     def run(self: "Server") -> None:
-        self._socket.settimeout(1.0) 
+        self._socket.settimeout(1.0)
         self._socket.listen()
         pool = None
-        self.__print_startup(host=self.__host, port=self.__port)
+        _ServerUtil.print_server_listening(host=self.__host, port=self.__port)
 
         try:
             if self._max_connections > 0:
@@ -53,7 +54,7 @@ class Server:
                         conn = Connection.bootstrap(self._socket.accept())
                         pool.submit(self._handle, conn)
                     except socket.timeout:
-                        continue 
+                        continue
             else:
                 while True:
                     try:
@@ -65,29 +66,9 @@ class Server:
                         continue
 
         except KeyboardInterrupt:
-            self.__print_shutdown()
+            _ServerUtil.print_server_shutdown()
 
         finally:
             if pool:
                 pool.shutdown(wait=False)
             self._socket.close()
-
-    def __print_startup(self: "Server", host: str, port: int) -> None:
-        print(f"""
-            \033[93m
-                (\\_/)
-                (°ᴥ°)
-                (>🦴  
-            \033[0m  \033[1m\033[93mZoe Framework\033[0m \033[90m·\033[0m \033[96mhttp://{host}:{port}\033[0m
-            \033[90m\t\tready to serve 🐾\033[0m
-            """)
-
-    def __print_shutdown(self: "Server") -> None:
-        print(f"""
-            \033[93m
-                (\\_/)
-                (˘ᴥ˘) 💤 
-                (>
-            \033[0m  \033[1m\033[93mZoe Framework\033[0m \033[90m·\033[0m \033[97mshutting down...\033[0m
-            \033[90m\t   see you next time 🐾\033[0m
-        """)
