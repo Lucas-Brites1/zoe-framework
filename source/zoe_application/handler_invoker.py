@@ -4,6 +4,7 @@ from zoe_http.response import Response
 from zoe_schema.model_schema import Model
 from zoe_exceptions.schemas_exceptions.exc_aggregate import ZoeSchemaAggregateException
 from zoe_schema.model_engine import ModelEngine
+from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException, HttpCode
 
 import typing
 import inspect
@@ -23,6 +24,11 @@ class HandlerInvoker:
           if param in ("self", "request", "return"):
               continue
           if isinstance(class_reference, type) and Model.is_model(class_reference=class_reference):
+                if request.body is None:
+                    raise ZoeHttpException(
+                        message=f"Request body is required but was not provided.",
+                        status_code=HttpCode.BAD_REQUEST
+                    )
                 try:
                     #param == body
                     kwargs[param] = ModelEngine.validate_and_create(model_class=class_reference, data=request.body)

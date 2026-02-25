@@ -4,8 +4,10 @@ from zoe_router.router import Router
 from zoe_http.handler import Handler
 from zoe_router.router import Route, Routes, Router
 from zoe_http.middleware import Middleware
-from zoe_http.code import HttpCode
 from zoe_application.handler_invoker import HandlerInvoker
+from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
+from zoe_exceptions.http_exceptions.exc_internal_exc import InternalServerException
+from zoe_exceptions.http_exceptions.exc_not_found import RouteNotFoundException
 
 class Zoe:
     def __init__(self: "Zoe") -> None:
@@ -41,7 +43,7 @@ class Zoe:
                 if handler:
                     request.set_path_params(params=params)
                     return self._call_handler(handler=handler, request=req)
-            return Response(http_status_code=HttpCode.NOT_FOUND)
+            return RouteNotFoundException(request=request).to_response()
 
         chain = call_handler
         for middleware in reversed(self.__middlewares):
@@ -49,4 +51,9 @@ class Zoe:
             def chain(req, m=middleware, p=previous):
                 return m(req, p)
 
-        return chain(request)
+        try:
+            return chain(request)
+        except ZoeHttpException as exc:
+            return exc.to_response()
+        except Exception as exc:
+            return InternalServerException(detail=str(exc)).to_response()
