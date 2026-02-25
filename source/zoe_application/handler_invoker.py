@@ -13,13 +13,14 @@ class HandlerInvoker:
   @staticmethod
   def get_hints(handler: Handler) -> dict:
       return typing.get_type_hints(
-          handler.__call__,
+          handler.handle,
           globalns=vars(inspect.getmodule(type(handler)))
       )
 
   @staticmethod
   def resolve_kwargs(hints: dict, request: Request) -> dict | Response:
       kwargs: dict = {}
+
       for param, class_reference in hints.items():
           if param in ("self", "request", "return"):
               continue
