@@ -1,17 +1,28 @@
 from zoe_schema.field_schema_validator import FieldValidator
-from zoe_exceptions.schemas_exceptions.validation_exception import ValidatorException
+from zoe_exceptions.schemas_exceptions.exc_validator import SchemaValidatorException
+from zoe_exceptions.schemas_exceptions.exc_base import ErrorCode
 from typing import Any
-from numbers import Real
 
 class Length(FieldValidator):
-    def __init__(self: "Length", min: Real | None = None, max: Real | None = None):
+    def __init__(self, min: int | None = None, max: int | None = None):
         self.min = min
         self.max = max
 
-    def __call__(self: "Length", value: Any, field_name: str) -> None:
-        if self.min:
-            if len(value) < self.min:
-                raise ValidatorException(field_name=field_name, message=f"'{field_name}' must have at least {self.min} characeters")
-        if self.max:
-            if len(value) > self.max:
-                raise ValidatorException(field_name=field_name, message=f"'{field_name}' exceed the maximum number of characeters from {self.max}")
+    def validate(self, value: Any, field_name: str) -> None:
+        length = len(value)
+
+        if self.min is not None and length < self.min:
+            raise SchemaValidatorException(
+                field_name=field_name,
+                message=f"'{field_name}' is too short. Minimum length is {self.min}, but got {length}.",
+                error_code=ErrorCode.INVALID_LENGTH,
+                details={"min_length": self.min, "received_length": length}
+            )
+
+        if self.max is not None and length > self.max:
+            raise SchemaValidatorException(
+                field_name=field_name,
+                message=f"'{field_name}' is too long. Maximum length is {self.max}, but got {length}.",
+                error_code=ErrorCode.INVALID_LENGTH,
+                details={"max_length": self.max, "received_length": length}
+            )
