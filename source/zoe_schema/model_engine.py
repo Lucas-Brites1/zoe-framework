@@ -63,5 +63,6 @@ class ModelEngine:
                             )
                     except ZoeSchemaException as exc:
                         errors.append(exc)
+                        break  
 
         return errors

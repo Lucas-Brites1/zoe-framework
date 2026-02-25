@@ -11,8 +11,5 @@ class Model:
 
   @classmethod
   def is_model(cls, class_reference: type) -> bool:
-    for base in class_reference.__mro__:
-      if base.__name__ == "Model":
-          return True
-    return False
+    return issubclass(class_reference, Model)
 
