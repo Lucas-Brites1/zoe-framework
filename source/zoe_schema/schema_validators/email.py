@@ -1,6 +1,7 @@
 from zoe_schema.field_schema_validator import FieldValidator
-from zoe_exceptions.schemas_exceptions.exc_validator import SchemaValidatorException
 from zoe_exceptions.schemas_exceptions.exc_base import ErrorCode
+from zoe_exceptions.schemas_exceptions.exc_type import SchemaTypeError
+from zoe_exceptions.schemas_exceptions.exc_validator import SchemaValidatorException
 import re
 from typing import Any
 
@@ -9,7 +10,7 @@ class Email(FieldValidator):
 
     def validate(self, value: Any, field_name: str) -> None:
         if not isinstance(value, str):
-            raise SchemaValidatorException(field_name, expected=str, actual=type(value))
+            raise SchemaTypeError(field_name, expected=str, actual=type(value))
 
         if not self._PATTERN.match(value):
             raise SchemaValidatorException(
