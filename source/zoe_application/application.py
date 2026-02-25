@@ -18,14 +18,14 @@ class Zoe:
     def use(self: "Zoe", to_add: Route | Routes | Router | Middleware) -> "Zoe":
         match type(to_add).__name__:
             case "Route":
-                self.__base_router.add(route=to_add)
+                self.__base_router.add(route=to_add) # type: ignore
             case "Routes":
-                for route in to_add:
+                for route in to_add: # type: ignore
                     self.__base_router.add(route=route)
             case "Router":
-                self.__routers.append(to_add)
+                self.__routers.append(to_add) # type: ignore
             case "Middleware":
-                self.__middlewares.append(to_add)
+                self.__middlewares.append(to_add) # type: ignore
             case _:
                 if hasattr(to_add, '__call__') and not isinstance(to_add, (Route, Routes, Router)):
                     self.__middlewares.append(to_add)
