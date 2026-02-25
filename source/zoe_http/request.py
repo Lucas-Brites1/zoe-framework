@@ -6,6 +6,9 @@ from zoe_http.method import HttpMethod
 from zoe_http._request_util.query_params import QueryParams
 from zoe_http._request_util.path_params import PathParams
 from zoe_http._request_util.form_params import FormParams
+from zoe_http._request_util.request_auth import Auth
+from zoe_exceptions.http_exceptions.exc_malformed_request import MalformedRequestException
+
 
 class Request:
     def __init__(self: "Request", raw_data: str, client_ip: str) -> None:
@@ -26,10 +29,11 @@ class Request:
         self.__connection: str
 
         self.__form_params = FormParams()
-        self.__query_params = QueryParams() #opcional depois de ? -> GET /users?page=1&limit=10&order=asc
-        self.__path_params = PathParams() #obrigatorio -> GET /users/123/posts/456
+        self.__query_params = QueryParams()
+        self.__path_params = PathParams()
 
         self.__parse()
+        self.__auth: Auth = Auth(authorization_header=self.headers.get("Authorization", None))
 
     @property
     def body(self: "Request") -> dict | Any:
@@ -79,6 +83,10 @@ class Request:
     def form_params(self: "Request") -> FormParams:
         return self.__form_params
 
+    @property
+    def auth(self: "Request") -> Auth:
+        return self.__auth
+
     def set_path_params(self: "Request", params: dict) -> None:
         for k, v in params.items():
             self.__path_params[k] = v
@@ -91,6 +99,9 @@ class Request:
 
     def __parse_request_line(self, request_raw_part: str) -> "Request":
         parts = request_raw_part.split(" ")
+        if len(parts) < 3:
+            raise MalformedRequestException("invalid request line format.")
+
         full_path = parts[1]
 
         if "?" in full_path:
@@ -103,17 +114,20 @@ class Request:
         self.__http_version = parts[2]
         return self
 
-    def __parse_headers(self: "Request", header_raw_part: list[str]) -> "Request":
+    def __parse_headers(self, header_raw_part: list[str]) -> "Request":
         self.__headers = {}
         for header in header_raw_part:
             key, _, value = header.partition(": ")
             match key:
+                case "Content-Length":
+                    try:
+                        self.__content_length = int(value)
+                    except ValueError:
+                        raise MalformedRequestException(f"Content-Length '{value}' is not a valid integer.")
                 case "Host":
                     self.__host = value
                 case "Content-Type":
                     self.__content_type = value
-                case "Content-Length":
-                    self.__content_length = int(value)
                 case "Accept":
                     self.__accept = value
                 case "Connection":
@@ -128,8 +142,8 @@ class Request:
             return self
         try:
             self.__body = json.loads(body_raw_part)
-        except Exception as exc:
-            raise Exception(f"Malformed request body '{body_raw_part}'\n{exc}")
+        except json.JSONDecodeError as exc:
+            raise MalformedRequestException(f"body is not valid JSON — {exc.msg} at line {exc.lineno}, col {exc.colno}.")
         return self
 
     def __parse(self: "Request") -> None:
