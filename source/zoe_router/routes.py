@@ -7,7 +7,7 @@ class Routes:
     @property
     def routes(self: "Routes") -> list[Route]:
         return self.__routes_container
-    
+
     def add(self: "Routes", route: Route) -> "Routes":
         self.__routes_container.append(route)
         return self
@@ -20,5 +20,6 @@ class Routes:
         if len(routes) == 0:
             raise Exception("Routes list cannot be empty")
         instance = cls()
-        instance._routes_container = routes
+        for route in routes:
+            instance.add(route=route)
         return instance
