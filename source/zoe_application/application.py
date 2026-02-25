@@ -7,9 +7,6 @@ from zoe_http.middleware import Middleware
 from zoe_http.code import HttpCode
 from zoe_application.handler_invoker import HandlerInvoker
 
-import inspect
-import typing
-
 class Zoe:
     def __init__(self: "Zoe") -> None:
         self.__base_router: Router = Router(prefix="")

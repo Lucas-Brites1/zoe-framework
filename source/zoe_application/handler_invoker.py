@@ -2,8 +2,8 @@ from zoe_http.handler import Handler
 from zoe_http.request import Request
 from zoe_http.response import Response
 from zoe_schema.model_schema import Model
-from zoe_exceptions.schemas_exceptions import schema_unexpected_type, validation_exception
-from zoe_exceptions import default_exception
+from zoe_exceptions.schemas_exceptions.exc_aggregate import ZoeSchemaAggregateException
+from zoe_schema.model_engine import ModelEngine
 
 import typing
 import inspect
@@ -23,15 +23,11 @@ class HandlerInvoker:
           if param in ("self", "request", "return"):
               continue
           if isinstance(class_reference, type) and Model.is_model(class_reference=class_reference):
-              try:
-                  body_instance = class_reference(**request.body)
-                  kwargs[param] = body_instance
-              except validation_exception.ValidatorException as exc:
-                  return exc.to_response(model_name=class_reference.__name__)
-              except schema_unexpected_type.SchemaFieldUnexpectedType as exc:
-                  return exc.to_response(model_name=class_reference.__name__)
-              except Exception as exc:
-                  return default_exception.DefaultException(exception_message=str(exc)).to_response()
+                try:
+                    #param == body
+                    kwargs[param] = ModelEngine.validate_and_create(model_class=class_reference, data=request.body)
+                except ZoeSchemaAggregateException as Zagexc:
+                    return Zagexc.to_response(model_name=class_reference.__name__)
       return kwargs
 
   @staticmethod
