@@ -15,17 +15,17 @@ class Router:
     def __match_path(self, pattern: str, endpoint: str) -> tuple[bool, dict]:
             pattern_parts = pattern.split("/")
             endpoint_parts = endpoint.split("/")
-            
+
             if len(pattern_parts) != len(endpoint_parts):
                 return False, {}
-            
+
             params = {}
             for p, a in zip(pattern_parts, endpoint_parts):
-                if re.match(r"^\{\w+\}$", p):  
-                    params[p[1:-1]] = a       
-                elif p != a:                   
+                if re.match(r"^\{\w+\}$", p):
+                    params[p[1:-1]] = a
+                elif p != a:
                     return False, {}
-            
+
             return True, params
 
     def resolve(self, method: HttpMethod, endpoint: str) -> tuple[Handler | None, dict]:
@@ -38,18 +38,23 @@ class Router:
 
     def POST(self: "Router", endpoint: str, handler: Handler) -> "Router":
         self.__assigned_routes.add(Route.post(endpoint=endpoint, handler=handler))
+        return self
 
     def GET(self: "Router", endpoint: str, handler: Handler) -> "Router":
         self.__assigned_routes.add(Route.get(endpoint=endpoint, handler=handler))
+        return self
 
     def PUT(self: "Router", endpoint: str, handler: Handler) -> "Router":
         self.__assigned_routes.add(Route.put(endpoint=endpoint, handler=handler))
+        return self
 
     def PATCH(self: "Router", endpoint: str, handler: Handler) -> "Router":
         self.__assigned_routes.add(Route.patch(endpoint=endpoint, handler=handler))
+        return self
 
     def DELETE(self: "Router", endpoint: str, handler: Handler) -> "Router":
         self.__assigned_routes.add(Route.delete(endpoint=endpoint, handler=handler))
+        return self
 
     @property
     def assigned_routes(self: "Router") -> Routes:
