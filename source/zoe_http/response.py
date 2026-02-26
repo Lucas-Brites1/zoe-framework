@@ -1,15 +1,16 @@
 from typing import Any
 import json
 
+
 from zoe_http.code import HttpCode
 
 class Response:
-    def __init__(self, http_status_code: HttpCode, body: Any = None, content_type: str = "application/json") -> None:
+    def __init__(self, http_status_code: HttpCode, body: Any = None, content_type: str = "application/json", headers: dict[str,Any ] = None) -> None:
         self.__status_code = http_status_code
         self.__body = body
         self.__content_type = content_type
         self.__http_version: str = "HTTP/1.1"
-        self.__extra_headers: dict[str, str] = {}
+        self.__extra_headers: dict[str, str] = dict(headers) if headers else {}
 
     @property
     def status_code(self) -> HttpCode:
