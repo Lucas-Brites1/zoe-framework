@@ -1,5 +1,10 @@
-from zoe import Zoe, Server, Router, Handler, Model, Field, Response, HttpCode
-from zoe import NotNull, Length, Range, Email, Logger, Limiter
+from zoe import App, Server, Router, Handler, Model, Field, Response, HttpCode, Route
+from zoe import NotNull, Length, Range, Email, Logger, Limiter, Container, Box, HttpMethod
+
+
+test_route = Route(endpoint="/teste_container", method=HttpMethod.GET, handler=Handler())
+Container.provide(Box(test_route))
+
 
 class CreateUserDto(Model):
     login: str = Field(NotNull(), Length(min=3, max=50))
@@ -64,6 +69,8 @@ class ListPostsHandler(Handler):
         user_posts = {k: v for k, v in _posts.items() if v["author"] == user_id}
         return Response(HttpCode.OK, body={"posts": user_posts, "total": len(user_posts)})
 
+app: App = App()
+
 if __name__ == "__main__":
     user_router = Router("/users")
     user_router\
@@ -74,7 +81,6 @@ if __name__ == "__main__":
         .POST("/{user_id}/posts", CreatePostHandler())\
         .GET("/{user_id}/posts", ListPostsHandler())
 
-    app = Zoe()
     app.use(Logger("CRUD-Test", verbose=True))\
        .use(Limiter())\
        .use(user_router)
