@@ -55,6 +55,7 @@ from zoe import (
 # extracting path params, validating the body, injecting dependencies...
 # Your job is just to implement handle() and return something meaningful.
 #
+
 class HelloHandler(Handler):
     def handle(self) -> Response:
         return Response(
@@ -67,6 +68,10 @@ class HelloHandler(Handler):
 # ─────────────────────────────────────────────────────────────────────────────
 # STEP 2 — Wire everything together
 # ─────────────────────────────────────────────────────────────────────────────
+user = {
+    "nome": "Lucas",
+    "idade": 23
+    }
 
 if __name__ == "__main__":
 
