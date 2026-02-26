@@ -4,9 +4,10 @@ import json
 from zoe_http.code import HttpCode
 
 class Response:
-    def __init__(self: "Response", http_status_code: HttpCode, body: Any = None) -> None:
+    def __init__(self: "Response", http_status_code: HttpCode, body: Any = None, content_type: str = "application/json") -> None:
         self.__status_code = http_status_code
         self.__body = body
+        self.__content_type = content_type
         self.__http_version: str = "HTTP/1.1"
 
     @property
@@ -23,7 +24,7 @@ class Response:
         if self.__body is not None:
             body_data = self.__serialize(self.__body)
             body_json = json.dumps(body_data)
-            response_message += f"Content-Type: application/json\r\n"
+            response_message += f"Content-Type: {self.__content_type}\r\n"
             response_message += f"Content-Length: {len(body_json.encode('utf-8'))}\r\n"
 
         for header in headers:
