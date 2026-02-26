@@ -42,6 +42,7 @@ from zoe_middlewares.limiter import Limiter
 from zoe_middlewares.cors import CORS
 from zoe_middlewares.body_limiter import BodyLimiter
 from zoe_middlewares.guard import Guard
+from zoe_middlewares.guard_strategy import GuardStrategy, BearerStrategy, BasicStrategy, ApiKeyStrategy, AnyStrategy, AllStrategy
 
 # Exceptions
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
@@ -52,17 +53,20 @@ from zoe_exceptions.schemas_exceptions.exc_aggregate import ZoeSchemaAggregateEx
 
 __all__ = [
     # Core
-    "Zoe", "Server",
+    "App", "Server",
     # HTTP
-    "Request", "Response", "HttpCode", "Handler", "Middleware",
+    "Request", "Response", "HttpCode", "Handler", "Middleware", "HttpMethod", "Bytes"
     # Router
     "Router", "Route", "Routes",
     # Schema
     "Model", "Field",
+    # GDependency Injection
+    "Container", "Box",
     # Validators
     "NotNull", "Length", "Range", "Email", "Pattern",
     # Middlewares
-    "Logger", "Limiter",
+    "Logger", "Limiter", "CORS", "BodyLimiter", "Guard", "GuardStrategy", "BearerStrategy",
+    "BearerStrategy", "BasicStrategy", "ApiKeyStrategy", "AnyStrategy", "AllStrategy",
     # Exceptions
     "ZoeHttpException", "RouteNotFoundException", "InternalServerException",
     "ErrorCode", "ZoeSchemaAggregateException",
