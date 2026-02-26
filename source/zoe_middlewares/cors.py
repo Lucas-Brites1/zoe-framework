@@ -16,23 +16,29 @@ class CORS(Middleware):
             "Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"
         ]
 
-    def __add_headers(self, response: Response, origin: str) -> None:
-        response.add_header("Access-Control-Allow-Origin", origin or "*")
-        response.add_header("Access-Control-Allow-Methods", ", ".join([m.value for m in self.__allowed_methods]))
-        response.add_header("Access-Control-Allow-Headers", ", ".join(self.__allowed_headers))
-        response.add_header("Access-Control-Max-Age", "86400")
+    def __create_response_with_allow_headers(self, origin: str) -> Response:
+        prefix: str = "Access-Control-Allow"
+        response: Response =  Response(
+            http_status_code=HttpCode.OK,
+            headers={
+                f"{prefix}-Origin": origin or "*",
+                f"{prefix}-Methods": ", ".join([m.value for m in self.__allowed_methods]),
+                f"{prefix}-Headers": ", ".join(self.__allowed_headers),
+                f"{prefix}-Max-Age": "86400"
+            }
+        )
+        return response
 
     def __call__(self, request: Request, next: Callable) -> Response:
         origin: str = request.headers.get("Origin", "")
         who_is_allowed: str = "*" in self.__allowed_origins or origin in self.__allowed_origins
 
         if request.method == HttpMethod.OPTIONS:
-            response = Response(HttpCode.OK)
             if who_is_allowed:
-                self.__add_headers(response=response, origin=origin)
-            return response
+                return self.__create_response_with_allow_headers(origin=origin)
+            return Response(http_status_code=HttpCode.OK)
 
         response = next(request)
         if who_is_allowed:
-            self.__add_headers(response=response, origin=origin)
+            response.add_header(key="Access-Control-Allow-Origin", value=origin or "*")
         return response
