@@ -47,7 +47,7 @@ if __name__ == "__main__":
 ```
 
 ```
-  Zoe Framework · http://127.0.0.1:7777
+  Zoe Framework · http://127.0.0.1:8080
   ready to serve 🐾
 ```
 
