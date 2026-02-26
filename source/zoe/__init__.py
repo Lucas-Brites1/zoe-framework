@@ -38,6 +38,7 @@ from zoe_schema.schema_validators.pattern import Pattern
 # Middlewares
 from zoe_middlewares.logger import Logger
 from zoe_middlewares.limiter import Limiter
+from zoe_middlewares.cors import CORS
 
 # Exceptions
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
