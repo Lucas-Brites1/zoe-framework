@@ -33,16 +33,13 @@ class App:
                     raise TypeError(f"Cannot register type '{type(to_add).__name__}'")
         return self
 
-    def _call_handler(self: "App", handler: Handler, request: Request) -> Response:
-      return HandlerInvoker.invoke(handler=handler, request=request)
 
     def _resolve(self, request: Request) -> Response:
         def call_handler(req: Request) -> Response:
             for router in self.__routers:
-                (handler, params) = router.resolve(method=req.method, endpoint=req.route)
-                if handler:
-                    request.set_path_params(params=params)
-                    return self._call_handler(handler=handler, request=req)
+                response = router.resolve(method=req.method, endpoint=req.route, request=request)
+                if response is not None:
+                  return response
             return RouteNotFoundException(request=request).to_response()
 
         chain = call_handler
