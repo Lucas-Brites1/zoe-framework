@@ -1,10 +1,8 @@
 from zoe import App, Server, Router, Handler, Model, Field, Response, HttpCode, Route
-from zoe import NotNull, Length, Range, Email, Logger, Limiter, Container, Box, HttpMethod
-
+from zoe import NotNull, Length, Range, Email, Logger, Limiter, CORS, Container, Box, HttpMethod
 
 test_route = Route(endpoint="/teste_container", method=HttpMethod.GET, handler=Handler())
 Container.provide(Box(test_route))
-
 
 class CreateUserDto(Model):
     login: str = Field(NotNull(), Length(min=3, max=50))
@@ -69,6 +67,11 @@ class ListPostsHandler(Handler):
         user_posts = {k: v for k, v in _posts.items() if v["author"] == user_id}
         return Response(HttpCode.OK, body={"posts": user_posts, "total": len(user_posts)})
 
+def auth_guard(request, next):
+    if not request.auth.bearer_token:
+        return Response(HttpCode.UNAUTHORIZED)
+    return next(request)
+
 app: App = App()
 
 if __name__ == "__main__":
@@ -83,6 +86,7 @@ if __name__ == "__main__":
 
     app.use(Logger("CRUD-Test", verbose=True))\
        .use(Limiter())\
-       .use(user_router)
+       .use(user_router)\
+       .use(CORS(allowed_origins=["http://localhost:3000"]))
 
     Server(app).run()
