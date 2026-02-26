@@ -6,13 +6,12 @@ from zoe_net._server_util import _ServerUtil
 from zoe_http.request import Request
 from zoe_http.response import Response
 from zoe_net.connection import Connection
-from zoe_application.application import Zoe
+from zoe_application.application import App
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
 from zoe_exceptions.http_exceptions.exc_internal_exc import InternalServerException
 
-LOCALHOST = "127.0.0.1"
 class Server:
-    def __init__(self: "Server", application: Zoe, host: str = LOCALHOST, port: int = 8080, max_connections: int = 0) -> None:
+    def __init__(self: "Server", application: App, host: str = "127.0.0.1", port: int = 7777, max_connections: int = 0) -> None:
             self.__app = application
             self.__host = host
             self.__port = port
