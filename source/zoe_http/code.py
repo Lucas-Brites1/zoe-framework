@@ -1,6 +1,13 @@
 from enum import Enum
 
 class HttpCode(Enum):
+    def __new__(cls, code: int, message: str):
+        obj = object.__new__(cls)
+        obj._value_ = code
+        obj.code = code
+        obj.message = message
+        return obj
+
     # --- 1xx Informational ---
     CONTINUE = (100, "Continue")
     SWITCHING_PROTOCOLS = (101, "Switching Protocols")
@@ -65,11 +72,3 @@ class HttpCode(Enum):
     LOOP_DETECTED = (508, "Loop Detected")
     NOT_EXTENDED = (510, "Not Extended")
     NETWORK_AUTHENTICATION_REQUIRED = (511, "Network Authentication Required")
-
-    @property
-    def code(self) -> int:
-        return self.value[0]
-
-    @property
-    def message(self) -> str:
-        return self.value[1]
