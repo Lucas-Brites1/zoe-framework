@@ -5,11 +5,6 @@ from zoe_exceptions.schemas_exceptions.exc_type import SchemaTypeError
 from zoe_exceptions.schemas_exceptions.exc_validator import SchemaValidatorException
 from zoe_exceptions.schemas_exceptions.exc_aggregate import ZoeSchemaAggregateException
 
-print(ZoeSchemaException)
-print(SchemaTypeError)
-print(SchemaValidatorException)
-print(ZoeSchemaAggregateException)
-
 import typing
 
 class ModelEngine:
