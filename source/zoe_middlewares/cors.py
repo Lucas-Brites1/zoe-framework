@@ -7,6 +7,42 @@ from typing import Callable
 
 class CORS(Middleware):
     def __init__(self, allowed_origins: list[str] = ["*"], allowed_methods: list[HttpMethod] = None, allowed_headers: list[str] = None):
+        """
+        Middleware that enables Cross-Origin Resource Sharing (CORS).
+        ---
+        Allows web applications running on a different origin (domain, port or protocol)
+        to access resources from your server. This is enforced by browsers via the
+        Same-Origin Policy — without CORS headers, browsers block cross-origin requests
+        before they reach your handlers.
+
+        When a browser detects a cross-origin request, it first sends a preflight
+        `OPTIONS` request asking for permission. This middleware intercepts that preflight
+        and responds with the appropriate headers, allowing the real request to proceed.
+
+        ---
+
+        *Args:*
+        - `allowed_origins` *(list[str])* — Origins allowed to access the server.
+        An origin is the combination of protocol, domain and port
+        (e.g. `http://localhost:3000`). Defaults to `["*"]` *(allow all)*.
+        - `allowed_methods` *(list[HttpMethod])* — HTTP methods the client is allowed
+        to use. Defaults to all standard methods.
+        - `allowed_headers` *(list[str])* — Headers the client is allowed to send.
+        Defaults to `["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"]`.
+
+        ---
+
+        *Example:*
+        ```python
+        from zoe import CORS
+
+        # allow all origins (development)
+        app.use(CORS())
+
+        # restrict to specific origins (production)
+        app.use(CORS(allowed_origins=["https://mysite.com", "https://www.mysite.com"]))
+        ```
+        """
         self.__allowed_origins = allowed_origins
         self.__allowed_methods = allowed_methods or [
             HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT,
@@ -17,14 +53,14 @@ class CORS(Middleware):
         ]
 
     def __create_response_with_allow_headers(self, origin: str) -> Response:
-        prefix: str = "Access-Control-Allow"
+        allow_prefix: str = "Access-Control-Allow"
         response: Response =  Response(
             http_status_code=HttpCode.OK,
             headers={
-                f"{prefix}-Origin": origin or "*",
-                f"{prefix}-Methods": ", ".join([m.value for m in self.__allowed_methods]),
-                f"{prefix}-Headers": ", ".join(self.__allowed_headers),
-                f"{prefix}-Max-Age": "86400"
+                f"{allow_prefix}-Origin": origin or "*",
+                f"{allow_prefix}-Methods": ", ".join([m.value for m in self.__allowed_methods]),
+                f"{allow_prefix}-Headers": ", ".join(self.__allowed_headers),
+                f"{allow_prefix}-Max-Age": "86400"
             }
         )
         return response
