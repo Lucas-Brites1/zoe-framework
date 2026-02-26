@@ -11,7 +11,7 @@ from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
 from zoe_exceptions.http_exceptions.exc_internal_exc import InternalServerException
 
 class Server:
-    def __init__(self: "Server", application: App, host: str = "127.0.0.1", port: int = 7777, max_connections: int = 0) -> None:
+    def __init__(self: "Server", application: App, host: str = "127.0.0.1", port: int = 8080, max_connections: int = 0) -> None:
             self.__app = application
             self.__host = host
             self.__port = port
