@@ -18,6 +18,7 @@ from zoe_http.code import HttpCode
 from zoe_http.handler import Handler
 from zoe_http.middleware import Middleware
 from zoe_http.method import HttpMethod
+from zoe_http.bytes import Bytes
 
 # Router
 from zoe_router.router import Router
@@ -39,6 +40,8 @@ from zoe_schema.schema_validators.pattern import Pattern
 from zoe_middlewares.logger import Logger
 from zoe_middlewares.limiter import Limiter
 from zoe_middlewares.cors import CORS
+from zoe_middlewares.body_limiter import BodyLimiter
+from zoe_middlewares.guard import Guard
 
 # Exceptions
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
