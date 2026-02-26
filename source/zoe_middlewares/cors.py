@@ -24,15 +24,15 @@ class CORS(Middleware):
 
     def __call__(self, request: Request, next: Callable) -> Response:
         origin: str = request.headers.get("Origin", "")
-        allowed = "*" in self.__allowed_origins or origin in self.__allowed_origins
+        who_is_allowed: str = "*" in self.__allowed_origins or origin in self.__allowed_origins
 
         if request.method == HttpMethod.OPTIONS:
             response = Response(HttpCode.OK)
-            if allowed:
+            if who_is_allowed:
                 self.__add_headers(response=response, origin=origin)
             return response
 
         response = next(request)
-        if allowed:
+        if who_is_allowed:
             self.__add_headers(response=response, origin=origin)
         return response
