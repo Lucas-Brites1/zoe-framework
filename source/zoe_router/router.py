@@ -2,15 +2,21 @@ from zoe_router.route import Route
 from zoe_router.routes import Routes
 from zoe_http.method import HttpMethod
 from zoe_http.handler import Handler
+from zoe_http.middleware import Middleware
 import re
 
 class Router:
     def __init__(self: "Router", prefix: str) -> None:
         self.__assigned_routes: Routes = Routes()
         self.__prefix = prefix
+        self.__router_middlewares: list[Middleware] = []
 
     def add(self: "Router", route: Route) -> None:
         self.__assigned_routes.add(route=route)
+
+    def use(self: "Router", middleware: Middleware) -> "Router":
+        self.__router_middlewares.append(middleware)
+        return self
 
     def __match_path(self, pattern: str, endpoint: str) -> tuple[bool, dict]:
             pattern_parts = pattern.split("/")
@@ -32,7 +38,7 @@ class Router:
         for route in self.__assigned_routes:
             full = self.__prefix + route.endpoint
             matched, params = self.__match_path(pattern=full, endpoint=endpoint)
-            if route.method.value == method.value and matched:
+            if route.method.value == method.value and matched:  
                 return route.handler, params
         return None, {}
 
