@@ -1,6 +1,15 @@
+
+
 # Core
-from zoe_application.application import Zoe
+from zoe_application.application import App
 from zoe_net.server import Server
+def who_made_this():
+    """Meet the dogs behind Zoe Framework 🐾"""
+    App._easter_egg()
+
+# Dependency Injection DI
+from zoe_di.box import Box
+from zoe_di.container import Container
 
 # HTTP
 from zoe_http.request import Request
@@ -8,6 +17,7 @@ from zoe_http.response import Response
 from zoe_http.code import HttpCode
 from zoe_http.handler import Handler
 from zoe_http.middleware import Middleware
+from zoe_http.method import HttpMethod
 
 # Router
 from zoe_router.router import Router
