@@ -6,9 +6,10 @@ class HttpMethod(Enum):
     PUT = "PUT"
     PATCH = "PATCH"
     DELETE = "DELETE"
+    OPTIONS = "OPTIONS"
 
     @staticmethod
-    def str_to_method(method_str: str) -> "HttpMethod":  
+    def str_to_method(method_str: str) -> "HttpMethod":
         try:
             return HttpMethod(value=method_str)
         except ValueError:
