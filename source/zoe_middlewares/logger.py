@@ -2,6 +2,7 @@ from zoe_http.middleware import Middleware
 from zoe_http.request import Request
 from zoe_http.response import Response
 from zoe_http.code import HttpCode
+from zoe_http.bytes import Bytes
 
 from typing import Callable
 from datetime import datetime
@@ -54,11 +55,72 @@ def _duration_tag(ms: float) -> str:
         color = _Color.RED
     return f"{color}{ms:.1f}ms{_Color.RESET}"
 
-
 class Logger(Middleware):
     def __init__(self, application_name: str | None = None, verbose: bool = False) -> None:
+        """Middleware that logs every HTTP request processed by the server.
+        ---
+
+        **Args:**
+            `application_name` *(str)*: Label shown at the start of every log line.
+            `verbose` *(bool)*: If True, also logs request headers and body.
+                **Default to False**
+
+        **Example:**
+        ```python
+            app.use(Logger(application_name="MyApp"))
+
+            app.use(Logger(application_name="MyApp", verbose=True))
+        ```
+        """
         self.__name = application_name
         self.__verbose = verbose
+        self.__big_payload_warn: bool = True
+        self.__big_payload_threshold: Bytes = Bytes.from_kb(n=10) # > 10KiB warning (1024 * 10 bytes)
+
+
+    def set_big_payload_threshold(self, threshold: Bytes) -> "Logger":
+        """
+        Sets the maximum body size that will be logged in verbose mode.
+    
+        If the request body exceeds this threshold, the Logger will display
+        a warning instead of printing the full body content.
+        ---
+
+        **Args:**
+        - `threshold` *(Bytes)* — Maximum loggable body size.
+        Use `Bytes.from_kb()` or `Bytes.from_mb()` to build the value.
+
+        **Returns:**
+        - `Logger` — returns self for method chaining.
+
+        **Default:** `Bytes.from_kb(10)` *(10 KiB)*
+
+        ---
+
+        **Example:**
+        ```python
+            app.use(
+                Logger("MyApp", verbose=True)
+                    .set_big_payload_threshold(Bytes.from_kb(20))
+            )
+        ```
+        """
+        self.__big_payload_threshold = threshold.value
+        return self
+
+    
+    def disable_big_payload_warning(self) -> "Logger":
+        """
+            Disables the big payload warning in verbose mode.
+            ---
+            By default, Logger warns when a request body exceeds the threshold
+            instead of printing it - protecting the terminal from beign flooded 
+            by large payloads. Call this method to turn off this protection.
+
+            *Note:* not recommended for production environments.
+        """
+        self.__big_payload_warn = False
+        return self
 
     def __call__(self, request: Request, next: Callable) -> Response:
         start = time.perf_counter()
@@ -78,8 +140,17 @@ class Logger(Middleware):
         print(f"{prefix}{ts}  {method}  {route}  {status}  {duration}")
 
         if self.__verbose:
-            print(f"  {_Color.GREY}headers: {dict(request.headers)}{_Color.RESET}")
             if request.body:
-                print(f"  {_Color.GREY}body:    {request.body}{_Color.RESET}")
+                if request.content_length:
+                    if request.content_length > self.__big_payload_threshold.value:
+                        if self.__big_payload_warn:
+                            print(f"{_Color.GREY}body: {_Color.RED}[payload too large to display — {_Color.BOLD}{request.content_length / 1024:.1f}KB]{_Color.RESET}")
+                            print(f"    > {_Color.GREY}hint: {_Color.GREEN}call Logger().disable_big_payload_warning() to suppress this message")
+                    else:
+                        print(f"  {_Color.GREY}body:    {request.body}{_Color.RESET}")
+                else:
+                    print(f"{_Color.GREY}body: {_Color.YELLOW}[missing Content-Length header — skipping body log]{_Color.RESET}")
+
+            print(f"  {_Color.GREY}headers: {dict(request.headers)}{_Color.RESET}")
 
         return response
