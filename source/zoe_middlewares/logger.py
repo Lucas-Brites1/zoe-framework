@@ -60,7 +60,7 @@ class Logger(Middleware):
         self.__name = application_name
         self.__verbose = verbose
 
-    def __call__(self, request: Request, next: Callable[[Request], Response]) -> Response:
+    def __call__(self, request: Request, next: Callable) -> Response:
         start = time.perf_counter()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 

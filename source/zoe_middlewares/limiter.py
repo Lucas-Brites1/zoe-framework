@@ -17,7 +17,7 @@ class Limiter(Middleware):
     def __client_exists(self: "Limiter", ip: str) -> bool:
         return self.__clients.__contains__(ip)
 
-    def __call__(self: "Limiter", request: Request, next: Callable[[Request], Response]) -> Response:
+    def __call__(self: "Limiter", request: Request, next: Callable) -> Response:
         with self.__lock:
           client: LimiterClient
           req_ip: str = request.client_ip
