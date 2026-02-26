@@ -134,15 +134,15 @@ if __name__ == "__main__":
     #   .GET("/")            → GET  /users/
     #   .GET("/{user_id}")   → GET  /users/{user_id}
     #   .DELETE("/{user_id}")→ DELETE /users/{user_id}
+    from zoe import Guard, BearerStrategy
     user_router: Router = Router(prefix="/users")
     user_router \
-        .POST("/", RegisterHandler())       \
-        .GET("/", ListUsersHandler())       \
+        .POST("/", RegisterHandler())        \
+        .GET("/", ListUsersHandler())        \
         .GET("/{user_id}", GetUserHandler()) \
         .DELETE("/{user_id}", DeleteUserHandler())
 
-    app.use(Logger("CRUD-Example", verbose=True)) \
-       .use(user_router)
+    app.use(user_router).use(Logger(application_name="My-App", verbose=False))
 
     # Try these requests:
     #   POST   http://127.0.0.1:7777/users/      request_body: {"login": "lucas", "password": "123", "email": "lucas@zoe.dev"}
