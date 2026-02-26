@@ -5,7 +5,7 @@ from zoe_schema.model_schema import Model
 from zoe_exceptions.schemas_exceptions.exc_aggregate import ZoeSchemaAggregateException
 from zoe_schema.model_engine import ModelEngine
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException, HttpCode
-
+from zoe_di.container import Container, Box
 import typing
 import inspect
 
@@ -24,6 +24,7 @@ class HandlerInvoker:
       for param, class_reference in hints.items():
           if param in ("self", "request", "return"):
               continue
+
           if isinstance(class_reference, type) and Model.is_model(class_reference=class_reference):
                 if request.body is None:
                     raise ZoeHttpException(
@@ -35,6 +36,13 @@ class HandlerInvoker:
                     kwargs[param] = ModelEngine.validate_and_create(model_class=class_reference, data=request.body)
                 except ZoeSchemaAggregateException as Zagexc:
                     return Zagexc.to_response(model_name=class_reference.__name__)
+
+          type_name = getattr(class_reference, '__name__', None) or getattr(class_reference, '_name', None)
+          if Container.has(key=param):
+              kwargs[param] = Container.resolve(key=param)
+          elif type_name and Container.has(key=type_name):
+              kwargs[param] = Container.resolve(key=type_name)
+
       return kwargs
 
   @staticmethod
