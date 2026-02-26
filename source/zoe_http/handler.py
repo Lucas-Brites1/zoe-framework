@@ -1,9 +1,9 @@
-from typing import Protocol, Any
+from typing import Any
 from zoe_http.request import Request
 from zoe_http.response import Response
 from zoe_exceptions.http_exceptions.exc_internal_exc import InternalServerException
 
-class Handler(Protocol):
+class Handler:
     def __init__(self: "Handler") -> None:
         self.__request: Request | None = None # type: ignore
 
