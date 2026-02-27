@@ -1,6 +1,8 @@
 from enum import Enum
 
 class HttpCode(Enum):
+    code: int
+    message: str
     def __new__(cls, code: int, message: str):
         obj = object.__new__(cls)
         obj._value_ = code
