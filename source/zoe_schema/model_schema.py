@@ -1,9 +1,11 @@
+from typing import Any
+
 class Model:
   def __init__(self: "Model", **kwargs):
     for key, value in kwargs.items():
       setattr(self, key, value)
 
-  def __getattr__(self: "Model", name: str) -> any:
+  def __getattr__(self: "Model", name: str) -> Any:
     raise AttributeError(f"'{type(self).__name__}' has no field '{name}'")
 
   def to_dict(self: "Model") -> dict:

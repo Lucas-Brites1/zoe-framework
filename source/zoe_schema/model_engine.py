@@ -66,9 +66,7 @@ class ModelEngine:
                 for validator in attr_class.validators:
                     try:
                         if hasattr(validator, 'validate'):
-                            validator.validate(value=value, field_name=attr_name) # type: ignore
-                        elif callable(validator):
-                            validator(value=value, field_name=attr_name)
+                            validator.validate(value=value, field_name=attr_name)
                         else:
                             raise TypeError(
                                 f"Validator '{type(validator).__name__}' on field '{attr_name}' "
