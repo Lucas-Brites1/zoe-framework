@@ -9,7 +9,6 @@ from zoe_http._request_util.form_params import FormParams
 from zoe_http._request_util.request_auth import Auth
 from zoe_exceptions.http_exceptions.exc_malformed_request import MalformedRequestException
 
-
 class Request:
     def __init__(self: "Request", raw_data: str, client_ip: str) -> None:
         self.__fields: dict[Any, Any] = {}
@@ -98,20 +97,23 @@ class Request:
                 self.__query_params[key] = unquote(value)
 
     def __parse_request_line(self, request_raw_part: str) -> "Request":
-        parts = request_raw_part.split(" ")
-        if len(parts) < 3:
+        (method, full_path, http_version) = request_raw_part.split(" ")
+        
+        if not method or not full_path or not http_version:
             raise MalformedRequestException("invalid request line format.")
 
-        full_path = parts[1]
+        full_path_normalized: str = full_path
+        if len(full_path) > 1 and full_path.endswith("/"):
+            full_path_normalized = full_path[:-1]
 
-        if "?" in full_path:
+        if "?" in full_path_normalized:
             self.__route, query_string = full_path.split("?", 1)
             self.__parse_query_params(query_string)
         else:
-            self.__route = full_path
+            self.__route = full_path_normalized
         
-        self.__method = HttpMethod.str_to_method(method_str=parts[0])
-        self.__http_version = parts[2]
+        self.__method = HttpMethod.str_to_method(method_str=method)
+        self.__http_version = http_version
         return self
 
     def __parse_headers(self, header_raw_part: list[str]) -> "Request":
