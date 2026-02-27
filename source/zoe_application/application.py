@@ -4,7 +4,6 @@ from zoe_router.router import Router
 from zoe_http.handler import Handler
 from zoe_router.router import Route, Routes, Router
 from zoe_http.middleware import Middleware
-from zoe_application.handler_invoker import HandlerInvoker
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
 from zoe_exceptions.http_exceptions.exc_internal_exc import InternalServerException
 from zoe_exceptions.http_exceptions.exc_not_found import RouteNotFoundException
@@ -41,7 +40,7 @@ class App:
                   return response
             return RouteNotFoundException(request=request).to_response()
 
-        chain = call_handler
+        chain = call_handler # type: ignore
         for middleware in reversed(self.__middlewares):
             previous = chain
             def chain(req, m=middleware, p=previous):
@@ -85,7 +84,7 @@ class App:
         print("  🐾 The dogs behind Zoe Framework:\n")
         for name, info in my_dogs.items():
             print(f"  {name}")
-            for k, v in info.items():
+            for k, v in info.items(): #type: ignore
                 print(f"    {k}: {v}")
             print()
         print(f"  All healthy and happy in {this_year} 🧡")
