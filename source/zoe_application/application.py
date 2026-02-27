@@ -1,7 +1,6 @@
 from zoe_http.request import Request
 from zoe_http.response import Response
 from zoe_router.router import Router
-from zoe_http.handler import Handler
 from zoe_router.router import Route, Routes, Router
 from zoe_http.middleware import Middleware
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
@@ -13,6 +12,8 @@ class App:
         self.__base_router: Router = Router(prefix="")
         self.__routers: list[Router] = [self.__base_router]
         self.__middlewares: list[Middleware] = []
+        self.__application_builtin_handlers()
+
 
     def use(self: "App", to_add: Route | Routes | Router | Middleware) -> "App":
         match type(to_add).__name__:
@@ -35,7 +36,7 @@ class App:
     def _resolve(self, request: Request) -> Response:
         def call_handler(req: Request) -> Response:
             for router in self.__routers:
-                response = router.resolve(method=req.method, endpoint=req.route, request=request)
+                response = router.resolve(method=req.method, request=request)
                 if response is not None:
                   return response
             return RouteNotFoundException(request=request).to_response()
@@ -52,6 +53,12 @@ class App:
             return exc.to_response()
         except Exception as exc:
             return InternalServerException(detail=str(exc)).to_response()
+
+    def __application_builtin_handlers(self: "App") -> None:
+        from zoe_handlers.health_check_handler import HealthCheck
+        from zoe_handlers.routes_handler import RoutesHandler
+        self.__base_router.add(HealthCheck.get_handler())
+        self.__base_router.add(RoutesHandler.get_handler(routers=self.__routers))
 
     @staticmethod
     def _easter_egg() -> None:
