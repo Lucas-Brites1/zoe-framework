@@ -43,6 +43,7 @@ class UserRegisterModel(Model):
     login: str
     password: str
     email: str
+    role: str
 
 class UserModel(Model):
     user: UserRegisterModel
@@ -150,3 +151,4 @@ if __name__ == "__main__":
     #   GET    http://127.0.0.1:7777/users/1
     #   DELETE http://127.0.0.1:7777/users/1
     server.run()
+   
