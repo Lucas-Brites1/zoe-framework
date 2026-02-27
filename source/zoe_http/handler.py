@@ -5,7 +5,7 @@ from zoe_exceptions.http_exceptions.exc_internal_exc import InternalServerExcept
 
 class Handler:
     def __init__(self: "Handler") -> None:
-        self.__request: Request | None = None # type: ignore
+        self.__request: Request = None # type: ignore
 
     @property
     def request(self: "Handler") -> Request:
@@ -13,11 +13,11 @@ class Handler:
             raise RuntimeError("Request is not available outside of a handler call.")
         return self.__request
 
-    def handle(self: "Handler", **kwargs: Any) -> Response:
+    def handle(self: "Handler", **kwargs: Any) -> Response: # type: ignore[override]
         raise NotImplementedError("Handler must implement handle()")
 
     def __call__(self: "Handler", request: Request, **kwargs: Any) -> Response:
-      self.__request = request # type: ignore
+      self.__request = request
       try:
           return self.handle(**kwargs)
       except NotImplementedError:
