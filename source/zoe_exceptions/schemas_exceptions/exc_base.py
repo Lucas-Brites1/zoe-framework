@@ -17,7 +17,7 @@ class ZoeSchemaException(Exception):
         field_name: str,
         message: str,
         error_code: ErrorCode,
-        details: dict = None
+        details: dict | None = None
     ):
         self.field_name = field_name
         self.message = message
