@@ -1,4 +1,3 @@
-from zoe_schema.field_schema_validator import FieldValidator
 from zoe_exceptions.schemas_exceptions.exc_validator import SchemaValidatorException
 from zoe_exceptions.schemas_exceptions.exc_base import ErrorCode
 from typing import Any
