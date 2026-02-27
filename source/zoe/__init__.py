@@ -52,7 +52,7 @@ from zoe_exceptions.http_exceptions.exc_internal_exc import InternalServerExcept
 from zoe_exceptions.schemas_exceptions.exc_base import ErrorCode
 from zoe_exceptions.schemas_exceptions.exc_aggregate import ZoeSchemaAggregateException
 
-__all__ = [
+__all__ = [ # type: ignore
     # Core
     "App", "Server",
     # HTTP
