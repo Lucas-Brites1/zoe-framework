@@ -6,6 +6,7 @@ from zoe_http.middleware import Middleware
 from zoe_http.request import Request
 from zoe_http.response import Response
 from zoe_application.handler_invoker import HandlerInvoker
+from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException, HttpCode
 import re
 
 class Router:
@@ -38,13 +39,19 @@ class Router:
 
         return True, params
 
-    def __match_route(self, method: HttpMethod, endpoint: str) -> tuple[Handler | None, dict]:
+    def __match_route(self, method: HttpMethod, endpoint: str) -> tuple[Handler | None, dict, bool]:
+        endpoint_exists: bool = False
+
         for route in self.__assigned_routes:
             full = self.__prefix + route.endpoint
             matched, params = self.__match_path(pattern=full, endpoint=endpoint)
-            if route.method.value == method.value and matched:
-                return route.handler, params
-        return None, {}
+
+            if matched and route.method == method:
+                return route.handler, params, False
+            elif matched and route.method != method:
+                endpoint_exists = True
+
+        return None, {}, endpoint_exists
 
     def __exec_middlewares(self, request: Request, handler: Handler, params: dict) -> Response:
         def final(req: Request) -> Response:
@@ -66,12 +73,18 @@ class Router:
 
     def resolve(self, method: HttpMethod, endpoint: str, request: Request) -> Response | None:
         self.__prioritize_static_routes()
-        handler, params = self.__match_route(method=method, endpoint=endpoint)
+        handler, params, method_not_allowed = self.__match_route(method=method, endpoint=endpoint)
 
         if handler is None:
-            return None
+          if method_not_allowed:
+              return ZoeHttpException(
+                  message=f"Method {method.value} not allowed for {endpoint}.",
+                  status_code=HttpCode.METHOD_NOT_ALLOWED
+              ).to_response()
+          return None
 
         request.set_path_params(params)
+
         if not self.__router_middlewares:
             return HandlerInvoker.invoke(handler=handler, request=request)
 
