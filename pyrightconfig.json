@@ -3,5 +3,6 @@
   "extraPaths": [
     "source"
   ],
-  "typeCheckingMode": "off"
+  "typeCheckingMode": "standard",
+  "reportIncompatibleMethodOverride": "none"
 }
