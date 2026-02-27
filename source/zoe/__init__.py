@@ -35,6 +35,7 @@ from zoe_schema.schema_validators.length import Length
 from zoe_schema.schema_validators.range import Range
 from zoe_schema.schema_validators.email import Email
 from zoe_schema.schema_validators.pattern import Pattern
+from zoe_schema.schema_validators.password import Password
 
 # Middlewares
 from zoe_middlewares.logger import Logger
