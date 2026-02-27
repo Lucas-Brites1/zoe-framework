@@ -38,5 +38,3 @@ class Route:
     @property
     def method(self: "Route") -> HttpMethod:
         return self.__method
-
-

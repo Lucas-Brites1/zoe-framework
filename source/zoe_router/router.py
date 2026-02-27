@@ -39,13 +39,36 @@ class Router:
 
         return True, params
 
+    def __handle_wildcard_route(self, route: Route, requested_endpoint: str, requested_method: HttpMethod) -> tuple[Handler, dict] | None:
+        if "*" in route.endpoint:
+            wildcard_prefix: str = route.endpoint.replace("*", "")
+            full_prefix = self.__prefix + wildcard_prefix
+            if requested_endpoint.startswith(full_prefix) and route.method == requested_method:
+                wildcard_value = requested_endpoint[len(full_prefix):].lstrip("/")
+                return route.handler, {"wildcard": wildcard_value}
+        return None
+                
+
     def __match_route(self, method: HttpMethod, endpoint: str) -> tuple[Handler | None, dict, bool]:
         endpoint_exists: bool = False
 
         for route in self.__assigned_routes:
-            full = self.__prefix + route.endpoint
-            matched, params = self.__match_path(pattern=full, endpoint=endpoint)
+            full_path_normalized:str = self.__normalize_trailing_slash(full_path=self.__prefix + route.endpoint)
 
+            if "*" in full_path_normalized:
+                result = self.__handle_wildcard_route(
+                    route=route,
+                    requested_endpoint=endpoint,
+                    requested_method=method
+                )
+
+                if result:
+                    handler, params = result
+                    return handler, params, False
+                continue
+
+            matched, params = self.__match_path(pattern=full_path_normalized, endpoint=endpoint)
+            
             if matched and route.method == method:
                 return route.handler, params, False
             elif matched and route.method != method:
@@ -67,13 +90,22 @@ class Router:
         return pipeline(request)
 
     def __prioritize_static_routes(self) -> None:
+        # [static_routes, parametrized_routes, wildcard_routes]
         if not self.__already_reordered:
             self.assigned_routes.prioritize_static_routes()
             self.__already_reordered = True
 
-    def resolve(self, method: HttpMethod, endpoint: str, request: Request) -> Response | None:
+    def __normalize_trailing_slash(self: "Router", full_path: str) -> str:
+        if len(full_path) > 1 and full_path.endswith("/"):
+            return full_path[:-1]
+        return full_path
+
+
+    def resolve(self, method: HttpMethod, request: Request) -> Response | None:
         self.__prioritize_static_routes()
-        handler, params, method_not_allowed = self.__match_route(method=method, endpoint=endpoint)
+
+        endpoint: str = request.route
+        handler, params, method_not_allowed = self.__match_route(method=method, endpoint=self.__normalize_trailing_slash(full_path=endpoint))
 
         if handler is None:
           if method_not_allowed:
@@ -117,3 +149,7 @@ class Router:
     @property
     def router_middlewares(self) -> list[Middleware]:
         return self.__router_middlewares
+
+    @property
+    def prefix(self) -> str:
+        return self.__prefix
