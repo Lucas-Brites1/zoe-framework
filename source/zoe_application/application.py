@@ -33,7 +33,6 @@ class App:
                     raise TypeError(f"Cannot register type '{type(to_add).__name__}'")
         return self
 
-
     def _resolve(self, request: Request) -> Response:
         def call_handler(req: Request) -> Response:
             for router in self.__routers:
