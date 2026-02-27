@@ -5,7 +5,7 @@ import json
 from zoe_http.code import HttpCode
 
 class Response:
-    def __init__(self, http_status_code: HttpCode, body: Any = None, content_type: str = "application/json", headers: dict[str,Any ] = None) -> None:
+    def __init__(self, http_status_code: HttpCode, body: Any = None, content_type: str = "application/json", headers: dict[str,Any ] | None = None) -> None:
         self.__status_code = http_status_code
         self.__body = body
         self.__content_type = content_type
