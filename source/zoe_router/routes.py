@@ -12,6 +12,18 @@ class Routes:
         self.__routes_container.append(route)
         return self
 
+    def prioritize_static_routes(self: "Routes") -> None:
+      static: list[Route] = []
+      parametrized: list[Route] = []
+
+      for r in self.__routes_container:
+        if r.endpoint.__contains__("{"):
+            parametrized.append(r)
+        else:
+            static.append(r)
+
+      self.__routes_container = static + parametrized
+
     def __iter__(self):
         return iter(self.__routes_container)
 
