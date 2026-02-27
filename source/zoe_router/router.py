@@ -13,6 +13,7 @@ class Router:
         self.__assigned_routes: Routes = Routes()
         self.__prefix = prefix
         self.__router_middlewares: list[Middleware] = []
+        self.__already_reordered: bool = False
 
     def add(self, route: Route) -> None:
         self.__assigned_routes.add(route=route)
@@ -58,7 +59,13 @@ class Router:
 
         return pipeline(request)
 
+    def __prioritize_static_routes(self) -> None:
+        if not self.__already_reordered:
+            self.assigned_routes.prioritize_static_routes()
+            self.__already_reordered = True
+
     def resolve(self, method: HttpMethod, endpoint: str, request: Request) -> Response | None:
+        self.__prioritize_static_routes()
         handler, params = self.__match_route(method=method, endpoint=endpoint)
 
         if handler is None:
@@ -66,7 +73,6 @@ class Router:
 
         request.set_path_params(params)
         if not self.__router_middlewares:
-            from zoe_application.handler_invoker import HandlerInvoker
             return HandlerInvoker.invoke(handler=handler, request=request)
 
         return self.__exec_middlewares(request=request, handler=handler, params=params)
