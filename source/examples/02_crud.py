@@ -97,7 +97,7 @@ class GetUserHandler(Handler):
         # Path params are accessible via self.request.path_params
         # Since the route is "/users/{user_id}", Zoe extracts {user_id} automatically.
         user_id: int = int(self.request.path_params.user_id)
-        user: UserModel = _users.get(user_id)
+        user: UserModel | None = _users.get(user_id, None)
 
         if not user:
             return Response(
