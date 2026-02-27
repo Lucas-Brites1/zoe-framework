@@ -31,7 +31,7 @@ class Auth:
             except Exception as exc:
                 raise exc
         return None
-            
+
     @property
     def api_key(self: "Auth") -> str | None:
         api_key_prefix: str = "ApiKey "
@@ -45,6 +45,6 @@ class Auth:
         if self.__raw:
             return self.__raw.split(" ")[0]
         return None
-    
+
     def __bool__(self: "Auth") -> bool:
         return self.__raw is not None
