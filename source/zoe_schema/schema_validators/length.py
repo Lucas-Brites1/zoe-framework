@@ -3,7 +3,7 @@ from zoe_exceptions.schemas_exceptions.exc_validator import SchemaValidatorExcep
 from zoe_exceptions.schemas_exceptions.exc_base import ErrorCode
 from typing import Any
 
-class Length(FieldValidator):
+class Length:
     def __init__(self, min: int | None = None, max: int | None = None):
         self.min = min
         self.max = max

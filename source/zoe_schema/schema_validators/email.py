@@ -5,7 +5,7 @@ from zoe_exceptions.schemas_exceptions.exc_validator import SchemaValidatorExcep
 import re
 from typing import Any
 
-class Email(FieldValidator):
+class Email:
     _PATTERN = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
 
     def validate(self, value: Any, field_name: str) -> None:

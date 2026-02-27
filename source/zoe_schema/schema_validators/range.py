@@ -4,7 +4,7 @@ from zoe_exceptions.schemas_exceptions.exc_base import ErrorCode
 from numbers import Real
 from typing import Any
 
-class Range(FieldValidator):
+class Range:
     def __init__(self, min: Real | None = None, max: Real | None = None):
         self.min = min
         self.max = max

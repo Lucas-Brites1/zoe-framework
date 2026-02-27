@@ -3,7 +3,7 @@ from zoe_exceptions.schemas_exceptions.exc_validator import SchemaValidatorExcep
 from zoe_exceptions.schemas_exceptions.exc_base import ErrorCode
 from typing import Any
 
-class NotNull(FieldValidator):
+class NotNull:
     def validate(self, value: Any, field_name: str) -> None:
         if value is None:
             raise SchemaValidatorException(
