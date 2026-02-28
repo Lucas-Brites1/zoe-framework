@@ -7,6 +7,7 @@ from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
 from zoe_exceptions.http_exceptions.exc_internal_exc import InternalServerException
 from zoe_exceptions.http_exceptions.exc_not_found import RouteNotFoundException
 
+from typing import get_type_hints
 class App:
     def __init__(self: "App") -> None:
         self.__base_router: Router = Router(prefix="")
@@ -16,21 +17,17 @@ class App:
 
 
     def use(self: "App", to_add: Route | Routes | Router | Middleware) -> "App":
-        match type(to_add).__name__:
-            case "Route":
-                self.__base_router.add(route=to_add) # type: ignore
-            case "Routes":
-                for route in to_add: # type: ignore
-                    self.__base_router.add(route=route)
-            case "Router":
-                self.__routers.append(to_add) # type: ignore
-            case "Middleware":
-                self.__middlewares.append(to_add) # type: ignore
-            case _:
-                if hasattr(to_add, '__call__') and not isinstance(to_add, (Route, Routes, Router)):
-                    self.__middlewares.append(to_add)
-                else:
-                    raise TypeError(f"Cannot register type '{type(to_add).__name__}'")
+        if isinstance(to_add, Route):
+            self.__base_router.add(route=to_add)
+        elif isinstance(to_add, Routes):
+            for route in to_add:
+              self.__base_router.add(route=route)
+        elif isinstance(to_add, Router):
+            self.__routers.append(to_add)
+        elif isinstance(to_add, Middleware):
+            self.__middlewares.append(to_add)
+        else:
+            raise TypeError(f"Cannot register type '{type(to_add).__name__}'")
         return self
 
     def _resolve(self, request: Request) -> Response:
@@ -45,7 +42,7 @@ class App:
         for middleware in reversed(self.__middlewares):
             previous = chain
             def chain(req, m=middleware, p=previous):
-                return m(req, p)
+                return m.process(req, p)
 
         try:
             return chain(request)

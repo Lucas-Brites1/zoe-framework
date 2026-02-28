@@ -39,8 +39,9 @@ from zoe import (
 #
 # No manual request.json() or body parsing needed.
 #
+from zoe import Assert, Field
 class UserRegisterModel(Model):
-    login: str
+    login: str = Field(Assert(expected_value="lucas"))
     password: str
     email: str
     role: str
@@ -143,7 +144,12 @@ if __name__ == "__main__":
         .GET("/{user_id}", GetUserHandler()) \
         .DELETE("/{user_id}", DeleteUserHandler())
 
-    app.use(user_router).use(Logger(application_name="My-App", verbose=False))
+    from zoe import Limiter, Guard, BearerStrategy, BodyLimiter, Bytes
+    app.use(user_router).\
+      use(Logger(application_name="My-App", verbose=False)).\
+      use(Limiter(max_requests=10, window_seconds=20)).\
+      use(Guard(strategy=BearerStrategy(token="testando-guard"))).\
+      use(BodyLimiter(max_size=Bytes.from_kb(n=0)))
 
     # Try these requests:
     #   POST   http://127.0.0.1:7777/users/      request_body: {"login": "lucas", "password": "123", "email": "lucas@zoe.dev"}
@@ -151,4 +157,4 @@ if __name__ == "__main__":
     #   GET    http://127.0.0.1:7777/users/1
     #   DELETE http://127.0.0.1:7777/users/1
     server.run()
-   
+

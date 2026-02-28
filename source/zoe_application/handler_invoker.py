@@ -48,7 +48,7 @@ class HandlerInvoker:
   @staticmethod
   def invoke(handler: Handler, request: Request) -> Response:
     hints: dict = HandlerInvoker.get_hints(handler=handler)
-    kwargs: dict = HandlerInvoker.resolve_kwargs(hints=hints, request=request)
+    kwargs: dict = HandlerInvoker.resolve_kwargs(hints=hints, request=request) # type: ignore
     if isinstance(kwargs, Response):
       return kwargs
     return handler(request=request, **kwargs)
