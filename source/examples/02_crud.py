@@ -145,11 +145,7 @@ if __name__ == "__main__":
         .DELETE("/{user_id}", DeleteUserHandler())
 
     from zoe import Limiter, Guard, BearerStrategy, BodyLimiter, Bytes
-    app.use(user_router).\
-      use(Logger(application_name="My-App", verbose=False)).\
-      use(Limiter(max_requests=10, window_seconds=20)).\
-      use(Guard(strategy=BearerStrategy(token="testando-guard"))).\
-      use(BodyLimiter(max_size=Bytes.from_kb(n=0)))
+    app.use(user_router).use(Logger(application_name="My-App", verbose=False))
 
     # Try these requests:
     #   POST   http://127.0.0.1:7777/users/      request_body: {"login": "lucas", "password": "123", "email": "lucas@zoe.dev"}
