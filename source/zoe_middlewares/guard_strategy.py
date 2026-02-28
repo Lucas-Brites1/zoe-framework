@@ -61,7 +61,7 @@ class ApiKeyStrategy:
         self.__key: str = key
 
     def guard(self: "ApiKeyStrategy", request: Request) -> bool:
-        apikey: str = request.auth.api_key
+        apikey: str = request.auth.api_key # type: ignore
         if not apikey:
             return False
         return apikey == self.__key

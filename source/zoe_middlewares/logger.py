@@ -55,7 +55,7 @@ def _duration_tag(ms: float) -> str:
         color = _Color.RED
     return f"{color}{ms:.1f}ms{_Color.RESET}"
 
-class Logger(Middleware):
+class Logger:
     def __init__(self, application_name: str | None = None, verbose: bool = False) -> None:
         """Middleware that logs every HTTP request processed by the server.
         ---
@@ -81,7 +81,7 @@ class Logger(Middleware):
     def set_big_payload_threshold(self, threshold: Bytes) -> "Logger":
         """
         Sets the maximum body size that will be logged in verbose mode.
-    
+
         If the request body exceeds this threshold, the Logger will display
         a warning instead of printing the full body content.
         ---
@@ -105,16 +105,16 @@ class Logger(Middleware):
             )
         ```
         """
-        self.__big_payload_threshold = threshold.value
+        self.__big_payload_threshold = threshold
         return self
 
-    
+
     def disable_big_payload_warning(self) -> "Logger":
         """
             Disables the big payload warning in verbose mode.
             ---
             By default, Logger warns when a request body exceeds the threshold
-            instead of printing it - protecting the terminal from beign flooded 
+            instead of printing it - protecting the terminal from beign flooded
             by large payloads. Call this method to turn off this protection.
 
             *Note:* not recommended for production environments.
@@ -122,7 +122,7 @@ class Logger(Middleware):
         self.__big_payload_warn = False
         return self
 
-    def __call__(self, request: Request, next: Callable) -> Response:
+    def process(self, request: Request, next: Callable) -> Response:
         start = time.perf_counter()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 

@@ -5,8 +5,8 @@ from zoe_http.code import HttpCode
 from zoe_http.method import HttpMethod
 from typing import Callable
 
-class CORS(Middleware):
-    def __init__(self, allowed_origins: list[str] = ["*"], allowed_methods: list[HttpMethod] = None, allowed_headers: list[str] = None):
+class CORS:
+    def __init__(self, allowed_origins: list[str] = ["*"], allowed_methods: list[HttpMethod] | None = None, allowed_headers: list[str] | None = None):
         """
         Middleware that enables Cross-Origin Resource Sharing (CORS).
         ---
@@ -65,9 +65,9 @@ class CORS(Middleware):
         )
         return response
 
-    def __call__(self, request: Request, next: Callable) -> Response:
+    def process(self, request: Request, next: Callable) -> Response:
         origin: str = request.headers.get("Origin", "")
-        who_is_allowed: str = "*" in self.__allowed_origins or origin in self.__allowed_origins
+        who_is_allowed: str = "*" in self.__allowed_origins or origin in self.__allowed_origins # type: ignore
 
         if request.method == HttpMethod.OPTIONS:
             if who_is_allowed:

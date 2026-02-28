@@ -6,7 +6,7 @@ from zoe_http.bytes import Bytes
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
 from typing import Callable
 
-class BodyLimiter(Middleware):
+class BodyLimiter:
     def __init__(self, max_size: Bytes = Bytes.from_mb(n=1)) -> None:
         """
         Middleware that limits the maximum allowed request body size.
@@ -40,8 +40,8 @@ class BodyLimiter(Middleware):
         ```
         """
         self.__max_size: Bytes = max_size
-    
-    def __call__(self: "BodyLimiter", request: Request, next: Callable) -> Response:
+
+    def process(self: "BodyLimiter", request: Request, next: Callable) -> Response:
         if request.content_length > self.__max_size.value:
             return ZoeHttpException(
                 message=f"Payload too large. Maximum allowed size is {self.__max_size.value} bytes",
