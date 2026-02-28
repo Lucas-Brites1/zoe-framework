@@ -35,10 +35,13 @@ class RoutesHandler(Handler):
 
     def handle(self) -> Response:
         if not ZoeMetadata.is_debug():
-            return Response(HttpCode.NOT_FOUND, body={"error": "Not available outside debug mode."})
+            return Response.json(
+                http_code=HttpCode.NOT_FOUND,
+                body={"error": "Not available outside debug mode."}
+                )
 
-        return Response(
-            http_status_code=HttpCode.OK,
+        return Response.json(
+            http_code=HttpCode.OK,
             body={
                 "base-router": self.__serialize_router(self.routers[0]),
                 "api-routers": [self.__serialize_router(r) for r in self.routers[1:]]

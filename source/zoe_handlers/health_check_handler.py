@@ -5,7 +5,7 @@ from zoe_router.route import Route
 from zoe_application.zoe_metadata import ZoeMetadata
 import time
 
-_start_time: time = time.time()
+_start_time: float = time.time()
 
 class HealthCheck(Handler):
     @staticmethod
@@ -17,8 +17,8 @@ class HealthCheck(Handler):
         hours, remainder = divmod(uptime_seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
 
-        return Response(
-                http_status_code=HttpCode.OK,
+        return Response.json(
+                http_code=HttpCode.OK,
                 body={
                 "status": "healthy",
                 "version": ZoeMetadata.version(),
