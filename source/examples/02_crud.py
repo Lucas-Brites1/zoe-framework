@@ -19,6 +19,7 @@ from zoe import (
     Server,   # Opens the socket and starts listening for HTTP connections.
     Router,   # Groups routes under a shared URL prefix. Here we'll use "/users".
     Handler,  # Base class for request handlers. Implement handle() to process requests.
+    Request,  # Represents an incoming HTTP request — contains method, headers, body, and path params sent by the client.
     Response, # Wraps your data and HTTP status into a valid HTTP response.
     HttpCode, # Enum with standard HTTP status codes — 200, 201, 404, 500...
     Model,    # Base class for request body schemas. Define your fields as type annotations.
@@ -84,7 +85,7 @@ class RegisterHandler(Handler):
         )
 
 class ListUsersHandler(Handler):
-    def handle(self) -> Response:
+    def handle(self, request: Request) -> Response:
         # No body injection needed here — we're just reading from our "database".
         return Response(
             http_status_code=HttpCode.OK,
@@ -95,10 +96,10 @@ class ListUsersHandler(Handler):
         )
 
 class GetUserHandler(Handler):
-    def handle(self) -> Response:
+    def handle(self, request: Request) -> Response:
         # Path params are accessible via self.request.path_params
         # Since the route is "/users/{user_id}", Zoe extracts {user_id} automatically.
-        user_id: int = int(self.request.path_params.user_id)
+        user_id: int = int(request.path_params.user_id)
         user: UserModel | None = _users.get(user_id, None)
 
         if not user:
@@ -109,9 +110,9 @@ class GetUserHandler(Handler):
 
         return Response(http_status_code=HttpCode.OK, body={"data": user})
 
-class DeleteUserHandler(Handler):
-    def handle(self) -> Response:
-        user_id: int = int(self.request.path_params.user_id)
+class DeleteUserHandler:
+    def handle(self, request: Request) -> Response:
+        user_id: int = int(request.path_params.user_id)
 
         if user_id not in _users:
             return Response(
