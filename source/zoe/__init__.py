@@ -32,7 +32,6 @@ from zoe_schema.field_schema import Field
 
 # Validators
 from zoe_schema.schema_validators.not_null import NotNull
-from zoe_schema.schema_validators.length import Length
 from zoe_schema.schema_validators.range import Range
 from zoe_schema.schema_validators.email import Email
 from zoe_schema.schema_validators.pattern import Pattern
@@ -40,6 +39,7 @@ from zoe_schema.schema_validators.password import Password
 from zoe_schema.schema_validators.max import Max
 from zoe_schema.schema_validators.min import Min
 from zoe_schema.schema_validators.one_of import OneOf
+from zoe_schema.schema_validators.assert_validator import Assert
 
 # Middlewares
 from zoe_middlewares.logger import Logger
@@ -70,7 +70,7 @@ __all__ = [ # type: ignore
     # GDependency Injection
     "Container", "Box",
     # Validators
-    "NotNull", "Length", "Range", "Email", "Pattern",
+    "NotNull", "Range", "Email", "Pattern", "Password", "Min", "Max", "OneOf", "Assert",
     # Middlewares
     "Logger", "Limiter", "CORS", "BodyLimiter", "Guard", "GuardStrategy", "BearerStrategy",
     "BearerStrategy", "BasicStrategy", "ApiKeyStrategy", "AnyStrategy", "AllStrategy",

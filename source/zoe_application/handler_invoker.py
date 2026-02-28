@@ -51,4 +51,4 @@ class HandlerInvoker:
     kwargs: dict = HandlerInvoker.resolve_kwargs(hints=hints, request=request) # type: ignore
     if isinstance(kwargs, Response):
       return kwargs
-    return handler(request=request, **kwargs)
+    return handler.handle(request=request, **kwargs)
