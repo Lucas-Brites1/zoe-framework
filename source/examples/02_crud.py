@@ -144,7 +144,6 @@ if __name__ == "__main__":
         .GET("/{user_id}", GetUserHandler()) \
         .DELETE("/{user_id}", DeleteUserHandler())
 
-    from zoe import Limiter, Guard, BearerStrategy, BodyLimiter, Bytes
     app.use(user_router).use(Logger(application_name="My-App", verbose=False))
 
     # Try these requests:
