@@ -42,7 +42,7 @@ from zoe import (
 #
 from zoe import Assert, Field
 class UserRegisterModel(Model):
-    login: str = Field(Assert(expected_value="lucas"))
+    login: str
     password: str
     email: str
     role: str
@@ -66,7 +66,7 @@ _users: dict[int, UserModel] = {}
 # ─────────────────────────────────────────────────────────────────────────────
 
 class RegisterHandler(Handler):
-    def handle(self, body: UserRegisterModel) -> Response:
+    def handle(self, request: Request, body: UserRegisterModel) -> Response:
         # Notice the `body: UserRegisterModel` parameter.
         # You don't need to parse the request manually — Zoe sees that type hint,
         # parses the incoming JSON and injects a UserRegisterModel instance here.
@@ -76,8 +76,8 @@ class RegisterHandler(Handler):
         new_user: UserModel = UserModel(user=body, user_id=new_id)
         _users[new_id] = new_user
 
-        return Response(
-            http_status_code=HttpCode.CREATED,  # 201 — resource created successfully
+        return Response.json(
+            http_code=HttpCode.CREATED,  # 201 — resource created successfully
             body={
                 "message": f"Account for {body.email} created successfully!",
                 "data": new_user  # Zoe serializes the Model instance automatically
@@ -87,8 +87,8 @@ class RegisterHandler(Handler):
 class ListUsersHandler(Handler):
     def handle(self, request: Request) -> Response:
         # No body injection needed here — we're just reading from our "database".
-        return Response(
-            http_status_code=HttpCode.OK,
+        return Response.json(
+            http_code=HttpCode.OK,
             body={
                 "users": list(_users.values()),
                 "total": len(_users)
@@ -103,25 +103,25 @@ class GetUserHandler(Handler):
         user: UserModel | None = _users.get(user_id, None)
 
         if not user:
-            return Response(
-                http_status_code=HttpCode.NOT_FOUND,
+            return Response.json(
+                http_code=HttpCode.NOT_FOUND,
                 body={"error": f"User with id {user_id} not found."}
             )
 
-        return Response(http_status_code=HttpCode.OK, body={"data": user})
+        return Response.json(http_code=HttpCode.OK, body={"data": user})
 
 class DeleteUserHandler:
     def handle(self, request: Request) -> Response:
         user_id: int = int(request.path_params.user_id)
 
         if user_id not in _users:
-            return Response(
-                http_status_code=HttpCode.NOT_FOUND,
+            return Response.json(
+                http_code=HttpCode.NOT_FOUND,
                 body={"error": f"User with id {user_id} not found."}
             )
 
         del _users[user_id]
-        return Response(http_status_code=HttpCode.NO_CONTENT)  # 204 — deleted, no body
+        return Response(http_code=HttpCode.NO_CONTENT)  # 204 — deleted, no body
 
 # ─────────────────────────────────────────────────────────────────────────────
 # WIRING IT ALL TOGETHER

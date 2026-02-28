@@ -31,6 +31,10 @@ from zoe import (
     Logger,   # A built-in middleware that automatically logs every request —
               # method, path, status code and response time. Super useful during development.
 
+    Request,  # Represents every incoming HTTP request made by the client.
+              # Exposes the route, method, headers, body, query params, path params and more —
+              # everything you need to understand what the client wants and how to respond.
+
     Response, # Every handler must return a Response.
               # It wraps your data, the HTTP status code and any headers
               # into a valid HTTP response that gets sent back to the client.
@@ -56,10 +60,10 @@ from zoe import (
 # Your job is just to implement handle() and return something meaningful.
 #
 
-class HelloHandler(Handler):
-    def handle(self) -> Response:
-        return Response(
-            http_status_code=HttpCode.OK,       # 200 — everything went well!
+class HelloHandler:
+    def handle(self, request: Request) -> Response:
+        return Response.json(
+            http_code=HttpCode.OK,              # 200 — everything went well!
             body={"message": "Hello, World!"}   # Zoe automatically serializes this to JSON
         )
         # See? No boilerplate, no decorators, no magic strings.
