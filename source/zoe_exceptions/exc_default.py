@@ -7,7 +7,7 @@ class ZoeDefaultException(Exception):
     self.exception_message = exception_message
 
   def to_response(self: "ZoeDefaultException") -> Response:
-    return Response(http_status_code=HttpCode.BAD_REQUEST, body={
+    return Response.json(http_code=HttpCode.BAD_REQUEST, body={
       "error": {
           "message": self.exception_message
       }

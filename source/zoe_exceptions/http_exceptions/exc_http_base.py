@@ -8,7 +8,7 @@ class ZoeHttpException(Exception):
         self.status_code = status_code
 
     def to_response(self) -> Response:
-        return Response(http_status_code=self.status_code, body={
+        return Response.json(http_code=self.status_code, body={
             "error": {
                 "code": self.status_code.code,
                 "message": self.message

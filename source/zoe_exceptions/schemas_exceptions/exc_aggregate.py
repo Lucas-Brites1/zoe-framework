@@ -8,8 +8,8 @@ class ZoeSchemaAggregateException(Exception):
         super().__init__(f"{len(errors)} validation error(s) occurred.")
 
     def to_response(self, model_name: str) -> Response:
-        return Response(
-            http_status_code=HttpCode.BAD_REQUEST,
+        return Response.json(
+            http_code=HttpCode.BAD_REQUEST,
             body={
                 "error": {
                     "type": "SCHEMA_VALIDATION_ERROR",
