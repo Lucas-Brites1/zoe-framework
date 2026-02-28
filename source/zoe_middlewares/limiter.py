@@ -59,6 +59,6 @@ class Limiter(ThreadSafeMiddleware):
         client.increment()
 
         if client.request_count > self.__max_requests:
-            return Response(http_status_code=HttpCode.TOO_MANY_REQUESTS)
+            return Response(http_code=HttpCode.TOO_MANY_REQUESTS)
 
         return next(request)

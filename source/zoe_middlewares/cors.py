@@ -55,7 +55,7 @@ class CORS:
     def __create_response_with_allow_headers(self, origin: str) -> Response:
         allow_prefix: str = "Access-Control-Allow"
         response: Response =  Response(
-            http_status_code=HttpCode.OK,
+            http_code=HttpCode.OK,
             headers={
                 f"{allow_prefix}-Origin": origin or "*",
                 f"{allow_prefix}-Methods": ", ".join([m.value for m in self.__allowed_methods]),
@@ -72,7 +72,7 @@ class CORS:
         if request.method == HttpMethod.OPTIONS:
             if who_is_allowed:
                 return self.__create_response_with_allow_headers(origin=origin)
-            return Response(http_status_code=HttpCode.OK)
+            return Response(http_code=HttpCode.OK)
 
         response = next(request)
         if who_is_allowed:
