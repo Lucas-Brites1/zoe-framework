@@ -3,6 +3,7 @@ from zoe_http.code import HttpCode
 from enum import Enum
 
 class ErrorCode(str, Enum):
+    VALUE_MISMATCH         = "VALUE_MISMATCH"
     TYPE_MISMATCH          = "TYPE_MISMATCH"
     CONSTRAINT_VIOLATION   = "CONSTRAINT_VIOLATION"
     NULL_VALUE             = "NULL_VALUE"

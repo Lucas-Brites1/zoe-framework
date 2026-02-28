@@ -6,6 +6,7 @@ from zoe_exceptions.schemas_exceptions.exc_aggregate import ZoeSchemaAggregateEx
 from zoe_schema.schema_validators.not_null import NotNull
 from zoe_schema.field_schema_validator import FieldValidator
 
+from typing import Any
 import typing
 import types
 
@@ -36,17 +37,14 @@ class ModelEngine:
                 args = typing.get_args(hint)
                 return type(None) in args or type(types.UnionType) in args
             return False
-    
-    @staticmethod
-    def __contains_multiple_internal_types(hint: type) -> bool:
-            return typing.get_args(hint).__sizeof__() > 0
 
     @staticmethod
     def __contains_multiple_internal_types(hint: type) -> bool:
             return typing.get_args(hint).__sizeof__() > 0
 
+
     @staticmethod
-    def __get_base_type(hint: type) -> any:
+    def __get_base_type(hint: type) -> Any:
         origin = typing.get_origin(tp=hint)
         return origin if origin is not None else hint
 
@@ -64,10 +62,9 @@ class ModelEngine:
             base_expected = ModelEngine.__get_base_type(hint=expected_type)
 
             if actual_type != base_expected:
-                if ModelEngine.__is_optional(hint=typing.get_origin(expected_type)) and data[field_name] is None:
+                if ModelEngine.__is_optional(hint=typing.get_origin(expected_type)) and data[field_name] is None: # type: ignore
                     continue
-                
-                print(base_expected)
+
                 if ModelEngine.__contains_multiple_internal_types(hint=base_expected):
                     args: tuple = typing.get_args(tp=base_expected)
                     if expected_type in args:
@@ -94,14 +91,14 @@ class ModelEngine:
             if isinstance(attr_class, Field):
                 if attr_name in skip_fields:
                     continue
-                
+
                 value = data.get(attr_name, None)
 
                 for validator in attr_class.validators:
                     try:
                         if hasattr(validator, 'validate'):
                             if not isinstance(validator, NotNull) and value is None:
-                                continue                                
+                                continue
                             validator.validate(value=value, field_name=attr_name)
                         else:
                             raise TypeError(

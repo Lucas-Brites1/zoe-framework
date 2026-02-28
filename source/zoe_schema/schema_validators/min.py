@@ -1,22 +1,23 @@
 from zoe_exceptions.schemas_exceptions.exc_validator import SchemaValidatorException
 from zoe_exceptions.schemas_exceptions.exc_base import ErrorCode
 import builtins
+from typing import Any
 
 class Min:
     def __init__(self: "Min", min_: int) -> None:
         self.min = min_
 
-    def validate(self: "Min", value: any, field_name: str) -> None:
+    def validate(self: "Min", value: Any, field_name: str) -> None:
         if value == None:
             return
 
         type_value: type = type(value)
-        
+
         message_error: str | None = None
         details_error: dict | None = None
         #"'{field_name}' is too short. Minimum length is {self.min}, but got {length}."
         #details={"min_length": self.min, "received_length": length}
-        
+
         match type_value:
             case builtins.str:
                 length = len(value)
@@ -41,7 +42,7 @@ class Min:
         if message_error or details_error:
             exc = SchemaValidatorException(
                 field_name=field_name,
-                message=message_error,
+                message=message_error, # type: ignore
                 error_code=ErrorCode.INVALID_LENGTH,
                 details=details_error
             )
