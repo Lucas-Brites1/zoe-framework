@@ -3,6 +3,8 @@ from zoe_http.handler import Handler
 
 class Route:
     def __init__(self: "Route", endpoint: str, method: HttpMethod, handler: Handler) -> None:
+        if endpoint == "":
+            endpoint = "/"
         self.__endpoint = endpoint
         self.__method = method
         self.__handler = handler
