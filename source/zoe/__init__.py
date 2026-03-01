@@ -48,6 +48,8 @@ from zoe_middlewares.cors import CORS
 from zoe_middlewares.body_limiter import BodyLimiter
 from zoe_middlewares.guard import Guard
 from zoe_middlewares.guard_strategy import GuardStrategy, BearerStrategy, BasicStrategy, ApiKeyStrategy, AnyStrategy, AllStrategy
+from zoe_middlewares.helmet import Helmet, HelmetCrossOriginEmbedderPolicy, HelmetPermissionsPolicy
+from zoe_middlewares.static_files import StaticFiles
 
 # Exceptions
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
@@ -56,9 +58,12 @@ from zoe_exceptions.http_exceptions.exc_internal_exc import InternalServerExcept
 from zoe_exceptions.schemas_exceptions.exc_base import ErrorCode
 from zoe_exceptions.schemas_exceptions.exc_aggregate import ZoeSchemaAggregateException
 
+# Environment
+from zoe_env.env import Env
+
 __all__ = [ # type: ignore
     # Utils
-    "Bytes", "ZoeMetadata"
+    "Bytes", "ZoeMetadata", "Env",
     # Core
     "App", "Server",
     # HTTP
@@ -74,6 +79,7 @@ __all__ = [ # type: ignore
     # Middlewares
     "Logger", "Limiter", "CORS", "BodyLimiter", "Guard", "GuardStrategy", "BearerStrategy",
     "BearerStrategy", "BasicStrategy", "ApiKeyStrategy", "AnyStrategy", "AllStrategy",
+    "Helmet", "HelmetCrossOriginEmbedderPolicy", "HelmetPermissionsPolicy", "StaticFiles",
     # Exceptions
     "ZoeHttpException", "RouteNotFoundException", "InternalServerException",
     "ErrorCode", "ZoeSchemaAggregateException",
