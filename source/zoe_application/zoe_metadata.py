@@ -16,10 +16,10 @@ class ZoeMetadata:
     @staticmethod
     def version() -> str:
         try:
-            version("zoe-framework")
+            return version("zoe-framework")
         except PackageNotFoundError:
             return "dev"
-    
+
     @staticmethod
     def framework() -> str:
         return "zoe-framework"
