@@ -1,5 +1,6 @@
 from zoe_http.handler import Handler
 from zoe_http.response import Response
+from zoe_http.request import Request
 from zoe_http.code import HttpCode
 from zoe_router.router import Router
 from zoe_router.route import Route
@@ -33,7 +34,7 @@ class RoutesHandler(Handler):
             return endpoint[:-1]
         return endpoint
 
-    def handle(self) -> Response:
+    def handle(self: "RoutesHandler", request: Request) -> Response:
         if not ZoeMetadata.is_debug():
             return Response.json(
                 http_code=HttpCode.NOT_FOUND,
