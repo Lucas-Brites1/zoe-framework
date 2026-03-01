@@ -62,8 +62,8 @@ class Response:
 
     @classmethod
     def html(cls,
-             http_code: HttpCode,
              body: Any,
+             http_code: HttpCode = HttpCode.OK,
              charset: str = "utf-8",
              headers: dict[str, Any] | None = None
             ) -> "Html": # type: ignore
