@@ -32,13 +32,17 @@ class Helmet:
   def __init__(
       self: "Helmet",
       permissions_policy: list[HelmetPermissionsPolicy] | None = None,
-      cross_origin_embedder_policy: HelmetCrossOriginEmbedderPolicy | None = None
+      cross_origin_embedder_policy: HelmetCrossOriginEmbedderPolicy | None = None,
+      hsts: bool = True
     ):
     self.permissions_policy = permissions_policy
     self.cross_origin_embedder_policy = cross_origin_embedder_policy
+    self.__hsts = hsts
 
   def __insert_headers(self: "Helmet", response: Response) -> Response:
     for header_name, header_value in self.__DEFAULT_HEADERS.items():
+      if header_name == "Strict-Transport-Security" and not self.__hsts:
+        continue
       response.add_header(header_name, header_value)
 
     if self.permissions_policy:
