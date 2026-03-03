@@ -1,6 +1,6 @@
+from zoe_http._request_util.request_body import Body
 from typing import Any
 from urllib.parse import unquote
-import json
 
 from zoe_http.method import HttpMethod
 from zoe_http._request_util.query_params import QueryParams
@@ -10,32 +10,37 @@ from zoe_http._request_util.request_auth import Auth
 from zoe_exceptions.http_exceptions.exc_malformed_request import MalformedRequestException
 
 class Request:
-    def __init__(self: "Request", raw_data: str, client_ip: str) -> None:
-        self.__fields: dict[Any, Any] = {}
+    def __init__(self: "Request", header_bytes: bytes, body_bytes: bytes, client_ip: str) -> None:
         self.__client_ip = client_ip
-        self.__raw_data = raw_data
+        self.__header_bytes = header_bytes
+        self.__body_bytes = body_bytes
 
         self.__method: HttpMethod
         self.__route: str
         self.__http_version: str
-        self.__body: dict | Any
 
-        self.__content_type: str
-        self.__content_length: int
-        self.__host: str
-        self.__headers: dict[str, str] 
-        self.__accept: str
-        self.__connection: str
+        self.__content_type: str = ""
+        self.__content_length: int = 0
+        self.__host: str = ""
+        self.__headers: dict[str, str] = {}
+        self.__accept: str = ""
+        self.__connection: str = ""
 
         self.__form_params = FormParams()
         self.__query_params = QueryParams()
         self.__path_params = PathParams()
 
         self.__parse()
-        self.__auth: Auth = Auth(authorization_header=self.headers.get("Authorization", None))
+        self.__body: Body = Body.from_request(
+            content_type=self.__content_type,
+            body_bytes=self.__body_bytes
+        )
+        self.__auth: Auth = Auth(
+            authorization_header=self.headers.get("Authorization", None)
+        )
 
     @property
-    def body(self: "Request") -> dict | Any:
+    def body(self: "Request") -> Body:
         return self.__body
 
     @property
@@ -49,11 +54,11 @@ class Request:
     @property
     def headers(self: "Request") -> dict[str, Any]:
         return self.__headers
-    
+
     @property
     def content_type(self: "Request") -> str:
         return self.__content_type
-    
+
     @property
     def content_length(self: "Request") -> int:
         return self.__content_length
@@ -73,11 +78,11 @@ class Request:
     @property
     def path_params(self: "Request") -> PathParams:
         return self.__path_params
-    
+
     @property
     def query_params(self: "Request") -> QueryParams:
         return self.__query_params
-    
+
     @property
     def form_params(self: "Request") -> FormParams:
         return self.__form_params
@@ -98,7 +103,7 @@ class Request:
 
     def __parse_request_line(self, request_raw_part: str) -> "Request":
         (method, full_path, http_version) = request_raw_part.split(" ")
-        
+
         if not method or not full_path or not http_version:
             raise MalformedRequestException("invalid request line format.")
 
@@ -111,7 +116,7 @@ class Request:
             self.__parse_query_params(query_string)
         else:
             self.__route = full_path_normalized
-        
+
         self.__method = HttpMethod.str_to_method(method_str=method)
         self.__http_version = http_version
         return self
@@ -137,22 +142,13 @@ class Request:
                 case _:
                     self.__headers[key] = value
         return self
-        
-    def __parse_body(self, body_raw_part: str) -> "Request":
-        if not body_raw_part.strip():
-            self.__body = None
-            return self
-        try:
-            self.__body = json.loads(body_raw_part)
-        except json.JSONDecodeError as exc:
-            raise MalformedRequestException(f"body is not valid JSON — {exc.msg} at line {exc.lineno}, col {exc.colno}.")
-        return self
 
     def __parse(self: "Request") -> None:
-        splitted_data: list[str] = self.__raw_data.split("\r\n")
-        empty_line_index:int = splitted_data.index("")
-        body_raw:str = "\r\n".join(splitted_data[empty_line_index + 1:]) 
+        decoded_headers: str = self.__header_bytes.decode(
+            encoding="utf-8",
+            errors="replace"
+        )
+        lines = decoded_headers.split("\r\n")
 
-        self.__parse_request_line(request_raw_part=splitted_data[0])\
-        .__parse_headers(header_raw_part=splitted_data[1:empty_line_index])\
-        .__parse_body(body_raw_part=body_raw)
+        self.__parse_request_line(lines[0])
+        self.__parse_headers(lines[1:])
