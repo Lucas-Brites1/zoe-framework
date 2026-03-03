@@ -11,7 +11,7 @@ from zoe_exceptions.exc_non_http_internal_error import  ZoeNonHttpError
 from zoe_http._handler_util.handler_factory import GenericHandlerFactory
 from zoe_http._handler_util.handler_validator import HandlerValidator
 
-from typing import Callable
+from typing import overload, Callable
 from inspect import isfunction, ismethod, isclass
 import re
 
@@ -53,7 +53,7 @@ class Router:
                 wildcard_value = requested_endpoint[len(full_prefix):].lstrip("/")
                 return route.handler, {"wildcard": wildcard_value}
         return None
-                
+
 
     def __match_route(self, method: HttpMethod, endpoint: str) -> tuple[Handler | None, dict, bool]:
         endpoint_exists: bool = False
@@ -74,7 +74,7 @@ class Router:
                 continue
 
             matched, params = self.__match_path(pattern=full_path_normalized, endpoint=endpoint)
-            
+
             if matched and route.method == method:
                 return route.handler, params, False
             elif matched and route.method != method:
@@ -128,17 +128,30 @@ class Router:
 
         return self.__exec_middlewares(request=request, handler=handler, params=params)
 
-    def post(self, endpoint: str, handler: Handler = None) -> "Router":
+    @overload
+    def post(self, endpoint: str, handler: Handler) -> "Router": ...
+    @overload
+    def post(self, endpoint: str) -> Callable[[Callable], Handler]: ...
+
+    def post(self, endpoint: str, handler: Handler | None = None) -> "Router | Callable[[Callable], Handler]":
         if handler:
             self.__assigned_routes.add(Route.post(endpoint=endpoint, handler=handler))
             return self
 
-        def post_deco(fn_wrapped: Handler) -> Handler:
-            self.__assigned_routes.add(Route.post(endpoint=endpoint, handler=fn_wrapped))
-            return fn_wrapped
-        return post_deco
+        def post_deco(fn_wrapped: Callable | Handler) -> Handler:
+            if isinstance(fn_wrapped, Callable):
+                handler_generated_by_factory: Handler = self.__wrap_handler(fn_wrapped)
+                self.__assigned_routes.add(Route.post(endpoint=endpoint, handler=handler_generated_by_factory))
 
-    def get(self, endpoint: str, handler: Handler = None) -> "Router":
+            return handler_generated_by_factory  # type: ignore
+        return post_deco # type: ignore
+
+    @overload
+    def get(self, endpoint: str, handler: Handler) -> "Router": ...
+    @overload
+    def get(self, endpoint: str) -> Callable[[Callable], Handler]: ...
+
+    def get(self, endpoint: str, handler: Handler | None = None) -> "Router | Callable[[Callable], Handler]":
         if handler:
             self.__assigned_routes.add(Route.get(endpoint=endpoint, handler=handler))
             return self
@@ -147,55 +160,81 @@ class Router:
             if isinstance(fn_wrapped, Callable):
                 handler_generated_by_factory: Handler = self.__wrap_handler(fn_wrapped)
                 self.__assigned_routes.add(Route.get(endpoint=endpoint, handler=handler_generated_by_factory))
-            
-            return handler_generated_by_factory
-        return get_deco
 
-    def put(self, endpoint: str, handler: Handler = None) -> "Router":
+            return handler_generated_by_factory # type: ignore
+        return get_deco # type: ignore
+
+    @overload
+    def put(self, endpoint: str, handler: Handler) -> "Router": ...
+    @overload
+    def put(self, endpoint: str) -> Callable[[Callable], Handler]: ...
+
+    def put(self, endpoint: str, handler: Handler | None = None) -> "Router | Callable[[Callable], Handler]":
         if handler:
             self.__assigned_routes.add(Route.put(endpoint=endpoint, handler=handler))
             return self
-        
-        def put_deco(fn_wrapped: Handler) -> Handler:
-            self.__assigned_routes.add(Route.put(endpoint=endpoint, handler=fn_wrapped))
-            return fn_wrapped
-        return put_deco
 
-    def patch(self, endpoint: str, handler: Handler = None) -> "Router":
+        def put_deco(fn_wrapped: Callable | Handler) -> Handler:
+            if isinstance(fn_wrapped, Callable):
+                handler_generated_by_factory: Handler = self.__wrap_handler(fn_wrapped)
+                self.__assigned_routes.add(Route.put(endpoint=endpoint, handler=handler_generated_by_factory))
+
+            return handler_generated_by_factory # type: ignore
+
+        return put_deco # type: ignore
+
+    @overload
+    def patch(self, endpoint: str, handler: Handler) -> "Router": ...
+    @overload
+    def patch(self, endpoint: str) -> Callable[[Callable], Handler]: ...
+
+    def patch(self, endpoint: str, handler: Handler | None = None) -> "Router | Callable[[Callable], Handler]":
         if handler:
             self.__assigned_routes.add(Route.patch(endpoint=endpoint, handler=handler))
             return self
 
-        def patch_deco(fn_wrapped: Handler) -> Handler:
-            self.__assigned_routes.add(Route.patch(endpoint=endpoint, handler=fn_wrapped))
-            return fn_wrapped
-        return patch_deco
+        def patch_deco(fn_wrapped: Callable | Handler) -> Handler:
+            if isinstance(fn_wrapped, Callable):
+                handler_generated_by_factory: Handler = self.__wrap_handler(fn_wrapped)
+                self.__assigned_routes.add(Route.patch(endpoint=endpoint, handler=handler_generated_by_factory))
 
-    def delete(self, endpoint: str, handler: Handler = None) -> "Router":
+            return handler_generated_by_factory # type: ignore
+
+        return patch_deco # type: ignore
+
+    @overload
+    def delete(self, endpoint: str, handler: Handler) -> "Router": ...
+    @overload
+    def delete(self, endpoint: str) -> Callable[[Callable], Handler]: ...
+
+    def delete(self, endpoint: str, handler: Handler | None = None) -> "Router | Callable[[Callable], Handler]":
         if handler:
             self.__assigned_routes.add(Route.delete(endpoint=endpoint, handler=handler))
             return self
-        
-        def delete_deco(fn_wrapped: Handler) -> Handler:
-            self.__assigned_routes.add(Route.delete(endpoint=endpoint, handler=fn_wrapped))
-            return fn_wrapped
-        return delete_deco
+
+        def delete_deco(fn_wrapped: Callable | Handler) -> Handler:
+            if isinstance(fn_wrapped, Callable):
+                handler_generated_by_factory: Handler = self.__wrap_handler(fn_wrapped)
+                self.__assigned_routes.add(Route.delete(endpoint=endpoint, handler=handler_generated_by_factory))
+
+            return handler_generated_by_factory # type: ignore
+        return delete_deco # type: ignore
 
     def __wrap_handler(self, fn_or_handler: Handler | Callable) -> Handler:
         if isinstance(fn_or_handler, Handler):
             HandlerValidator.validate_signature(fn_or_handler.handle)
             return fn_or_handler
-    
+
         if isclass(object=fn_or_handler):
             try:
                 instance = fn_or_handler()
                 if isinstance(instance, Handler):
                     return instance
-            except Exception:
-                raise ZoeNonHttpError(
+            except Exception as e:
+                raise ZoeNonHttpError (
                     exception_message=f"Failed to instantiate handler class '{fn_or_handler.__name__}': {e}"
             )
-        
+
         if isfunction(fn_or_handler) or ismethod(fn_or_handler):
             return GenericHandlerFactory.new(fn=fn_or_handler)
 
