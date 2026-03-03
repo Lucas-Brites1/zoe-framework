@@ -5,15 +5,14 @@ from typing import Callable
 from threading import Lock
 
 class ThreadSafeMiddleware(Middleware):
-  __lock: Lock
+  _lock: Lock
   def __new__(cls, *args, **kwargs):
     instance = super().__new__(cls)
-    instance.__lock = Lock()
+    instance._lock = Lock()
     return instance
 
   def process(self: "ThreadSafeMiddleware", request: Request, next: Callable) -> Response:
-    with self.__lock:
-      return self.process_locked(request, next)
+      return self.process_locked(request=request, next=next)
 
   def process_locked(self, request: Request, next: Callable) -> Response:
-      ...
+      raise NotImplementedError
