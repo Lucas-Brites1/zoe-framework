@@ -12,7 +12,7 @@ from zoe_exceptions.http_exceptions.exc_internal_exc import InternalServerExcept
 from zoe_http.bytes import Bytes
 
 class Server:
-    _CHUNK_SIZE: Bytes = Bytes.from_kb(n=4)
+    _CHUNK_SIZE: Bytes = Bytes.from_kb(n=5)
     _DEFAULT_MAX_REQUEST_SIZE: Bytes = Bytes.from_mb(n=10)
     _DEFAULT_KEEP_ALIVE_TIMEOUT_SECONDS: int = 30
 
