@@ -39,7 +39,7 @@ class Server:
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._socket.bind((host, port))
 
-    def __read_request(self, conn_socket: socket.socket) -> str | None:
+    def __read_request(self, conn_socket: socket.socket) -> tuple[bytes, bytes] | None:
         conn_socket.settimeout(self._keep_alive_timeout)
         raw: bytes = b""
 
@@ -62,19 +62,21 @@ class Server:
 
             while len(body_part) < content_length:
                 remaining = content_length - len(body_part)
-                chunk: bytes = conn_socket.recv(min(self._CHUNK_SIZE.value, remaining))
+                chunk = conn_socket.recv(min(self._CHUNK_SIZE.value, remaining))
                 if not chunk:
                     break
                 body_part += chunk
 
-            return (header_part + b"\r\n\r\n" + body_part).decode("utf-8", errors="replace")
+            return (header_part, body_part)
 
         except socket.timeout:
             return None
         except Exception:
             return None
 
-    def __should_keep_alive(self, raw_data: str) -> bool:
+    def __should_keep_alive(self, header_bytes: bytes) -> bool:
+        raw_data: str = header_bytes.decode("utf-8", errors="replace")
+
         for line in raw_data.splitlines():
             if line.lower().startswith("connection:"):
                 return "keep-alive" in line.lower()
@@ -98,16 +100,26 @@ class Server:
         try:
             with conn.socket_connection:
                 while self.__running:
-                    raw_data = self.__read_request(conn.socket_connection)
+                    result: tuple[bytes, bytes] | None = self.__read_request(conn_socket=conn.socket_connection)
 
-                    if not raw_data or not raw_data.strip():
-                        break
+                    if result is None:
+                      break
+
+                    header_bytes, body_bytes = result
+
+                    if not header_bytes:
+                      break
 
                     client_ip: str = conn.socket_address[0]  # type: ignore
-                    keep_alive = self.__should_keep_alive(raw_data)
+                    keep_alive = self.__should_keep_alive(header_bytes)
 
                     try:
-                        client_request = Request(raw_data=raw_data, client_ip=client_ip)
+                        client_request = Request(
+                            body_bytes=body_bytes,
+                            header_bytes=header_bytes,
+                            client_ip=client_ip
+                        )
+
                         response = self.__app._resolve(request=client_request)
                     except ZoeHttpException as exc:
                         response = exc.to_response()
