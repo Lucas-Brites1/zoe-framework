@@ -110,6 +110,11 @@ class GetUserHandler(Handler):
 
         return Response.json(http_code=HttpCode.OK, body={"data": user})
 
+teste_router: Router = Router(prefix="/teste")
+@teste_router.get(endpoint="/hello-world")
+def hello(request: Request) -> Response:
+    return Response.text(body="legal", http_code=HttpCode.OK)
+
 class DeleteUserHandler:
     def handle(self, request: Request) -> Response:
         user_id: int = int(request.path_params.user_id)
@@ -140,12 +145,14 @@ if __name__ == "__main__":
     from zoe import Guard, BearerStrategy
     user_router: Router = Router(prefix="/users")
     user_router \
-        .POST("/", RegisterHandler())        \
-        .GET("/", ListUsersHandler())        \
-        .GET("/{user_id}", GetUserHandler()) \
-        .DELETE("/{user_id}", DeleteUserHandler())
+        .post("/", RegisterHandler())        \
+        .get("/", ListUsersHandler())        \
+        .get("/{user_id}", GetUserHandler()) \
+        .delete("/{user_id}", DeleteUserHandler())
 
-    app.use(user_router).use(Logger(application_name="My-App", verbose=False))
+    from zoe import Limiter, ZoeMetadata
+    ZoeMetadata.enable_debug()
+    app.use(user_router).use(Logger(application_name="My-App", verbose=False)).use(Limiter(max_requests=5, window_seconds=15))
 
     # Try these requests:
     #   POST   http://127.0.0.1:7777/users/      request_body: {"login": "lucas", "password": "123", "email": "lucas@zoe.dev"}
