@@ -1,7 +1,8 @@
 from typing import Any
 class Body:
-  def __init__(self: "Body", data: dict | str | bytes | None = None) -> None:
+  def __init__(self: "Body", data: dict | str | bytes | None = None, content_type: str = "") -> None:
     self.__data: dict | str | bytes | None = data
+    self.__type: str = content_type
 
   def get(self: "Body", key: str, default: Any | None = None) -> Any | None:
     if isinstance(self.__data, dict):
@@ -13,6 +14,13 @@ class Body:
     if isinstance(self.__data, str):
       return self.__data
     return None
+
+  def is_json(self: "Body") -> bool:
+    return "application/json" in self.__type
+
+  @property
+  def content_type(self: "Body") -> str | None:
+    return self.__type
 
   @property
   def raw(self: "Body") -> bytes | None:
@@ -43,7 +51,7 @@ class Body:
   def __parse_body(cls, content_type: str, body_bytes: bytes) -> dict | str | bytes | None:
     result: dict | str | bytes | None = None
     base_type: str = content_type.split(";")[0].strip()
-    print(base_type)
+
     match base_type:
       case "application/json":
         from json import loads, JSONDecodeError
@@ -83,4 +91,4 @@ class Body:
       return cls(None)
 
     data = cls.__parse_body(content_type, body_bytes)
-    return cls(data)
+    return cls(data, content_type)
