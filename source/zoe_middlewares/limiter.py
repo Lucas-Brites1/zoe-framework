@@ -41,24 +41,25 @@ class Limiter(ThreadSafeMiddleware):
     def __client_exists(self: "Limiter", ip: str) -> bool:
         return self.__clients.__contains__(ip)
 
-    def process_locked(self: "Limiter", request: Request, next: Callable) -> Response:
-        client: LimiterClient
-        req_ip: str = request.client_ip
+    def process_locked(self, request: Request, next: Callable) -> Response:
+      req_ip = request.client_ip
 
-        if self.__client_exists(ip=req_ip):
-            client = self.__clients[req_ip]
-        else:
-            self.__clients[req_ip] = LimiterClient(ip=req_ip)
-            client = self.__clients[req_ip]
+      with self._lock:
+          if not self.__client_exists(ip=req_ip):
+              self.__clients[req_ip] = LimiterClient(ip=req_ip)
 
-        elapsed_time: int = (datetime.now() - client.first_request_at).seconds
+          client = self.__clients[req_ip]
+          elapsed_time = (datetime.now() - client.first_request_at).seconds
 
-        if elapsed_time > self.__window_seconds:
-            client.reset()
+          if elapsed_time > self.__window_seconds:
+              client.reset()
 
-        client.increment()
+          client.increment()
+          exceeded = client.request_count > self.__max_requests
 
-        if client.request_count > self.__max_requests:
-            return Response(http_code=HttpCode.TOO_MANY_REQUESTS)
+      if exceeded:
+          response = Response(http_code=HttpCode.TOO_MANY_REQUESTS)
+          response.add_header("Connection", "close")
+          return Response(http_code=HttpCode.TOO_MANY_REQUESTS)
 
-        return next(request)
+      return next(request)
