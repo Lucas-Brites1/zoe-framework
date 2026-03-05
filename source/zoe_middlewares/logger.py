@@ -147,7 +147,7 @@ class Logger:
                             print(f"{_Color.GREY}body: {_Color.RED}[payload too large to display — {_Color.BOLD}{request.content_length / 1024:.1f}KB]{_Color.RESET}")
                             print(f"    > {_Color.GREY}hint: {_Color.GREEN}call Logger().disable_big_payload_warning() to suppress this message")
                     else:
-                        print(f"  {_Color.GREY}body:    {request.body}{_Color.RESET}")
+                        print(f"  {_Color.GREY}body:    {request.body.data}{_Color.RESET}")
                 else:
                     print(f"{_Color.GREY}body: {_Color.YELLOW}[missing Content-Length header — skipping body log]{_Color.RESET}")
 
