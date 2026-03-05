@@ -110,10 +110,22 @@ class GetUserHandler(Handler):
 
         return Response.json(http_code=HttpCode.OK, body={"data": user})
 
+#REMOVER DEPOIS
+from zoe import Container, Box
+class Database:
+  def __init__(self, host: str = "127.0.0.1"):
+    self.host = host
+
+  def print_daora(self):
+    print("Daora")
+Container.provide_instance(obj=Database(), key="db")
+
 teste_router: Router = Router(prefix="/teste")
 @teste_router.get(endpoint="/hello-world")
-def hello(request: Request) -> Response:
+def hello(request: Request, db: Box) -> Response: # ele ta passando como box não como o tipo real.. ver isso depois la no handler invoker na hora de injetar
+    db.instance.print_daora()
     return Response.text(body="legal", http_code=HttpCode.OK)
+#REMOVER ATÉ AQUI
 
 class DeleteUserHandler:
     def handle(self, request: Request) -> Response:
@@ -159,5 +171,8 @@ if __name__ == "__main__":
     #   GET    http://127.0.0.1:7777/users/
     #   GET    http://127.0.0.1:7777/users/1
     #   DELETE http://127.0.0.1:7777/users/1
+    from zoe import ZoeMetadata as zm # REMOVER AQUI
+    zm.enable_debug() # REMOVER AQUI
+    app.use(teste_router) #REMOVER AQUI
     server.run()
 
