@@ -112,7 +112,6 @@ class Router:
 
         endpoint: str = request.route
         handler, params, method_not_allowed = self.__match_route(method=method, endpoint=self.__normalize_trailing_slash(full_path=endpoint))
-
         if handler is None:
           if method_not_allowed:
               return ZoeHttpException(
