@@ -22,6 +22,7 @@ class Box:
                 self.object_name: str = self.info.callable_name
             case ObjectKind.CLASS:
                 self.info = Inspector.callable_infos(fn=obj.__init__)
+                self.instance = obj
                 self.object_name: str = obj.__name__
             case ObjectKind.PRIMITIVE:
                 raise ZoeNonHttpError(
