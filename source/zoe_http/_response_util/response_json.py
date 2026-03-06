@@ -1,5 +1,6 @@
 from zoe_http.response import Response
 from zoe_http.code import HttpCode
+from zoe_schema.model_schema import Model
 
 from typing import Any
 import json

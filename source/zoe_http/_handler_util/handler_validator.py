@@ -46,7 +46,7 @@ class HandlerValidator:
                 exception_message=(
                     f"Handler '{func.__name__}' first parameter must be typed as 'Request'.\n"
                     f"\tFound:    {format_signature}\n"
-                    f"\tExpected: def {func.__name__}({first_param.name}: Request, ...) -> Response"
+                    f"\t\tExpected: def {func.__name__}({first_param.name}: Request, ...) -> Response"
                 )
             )
 
@@ -56,7 +56,7 @@ class HandlerValidator:
                 exception_message=(
                     f"Handler '{func.__name__}' first parameter must be typed as 'Request'.\n"
                     f"\tFound:    {format_signature}\n"
-                    f"\tExpected: def {func.__name__}({first_param.name}: Request, ...) -> Response"
+                    f"\t\tExpected: def {func.__name__}({first_param.name}: Request, ...) -> Response"
                 )
             )
 
@@ -65,14 +65,13 @@ class HandlerValidator:
             if return_type_name != 'Response':
                 raise ZoeNonHttpError(
                     exception_message=(
-                        f"Handler '{func.__name__}' must return 'Response'. "
-                        f"Found return type: '{return_type_name}'. "
-                        f"Signature: {format_signature}"
+                        f"Handler '{func.__name__}' must return 'Response'.\n"
+                        f"\tFound return type: '{return_type_name}'. "
+                        f"\t\tSignature: {format_signature}"
                     )
                 )
         else:
             raise ZoeNonHttpError(
-
                 exception_message=(
                     f"Handler '{func.__name__}' must have return type annotation '... -> Response'.\n"
                     f"\tFound: No return type specified.\n"
