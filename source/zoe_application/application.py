@@ -4,10 +4,10 @@ from zoe_router.router import Router
 from zoe_router.router import Route, Routes, Router
 from zoe_http.middleware import Middleware
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
+from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from zoe_exceptions.http_exceptions.exc_internal_exc import InternalServerException
 from zoe_exceptions.http_exceptions.exc_not_found import RouteNotFoundException
 
-from typing import get_type_hints
 class App:
     def __init__(self: "App") -> None:
         self.__base_router: Router = Router(prefix="")
@@ -35,7 +35,7 @@ class App:
             for router in self.__routers:
                 response = router.resolve(method=req.method, request=request)
                 if response is not None:
-                  return response
+                    return response
             return RouteNotFoundException(request=request).to_response()
 
         chain = call_handler # type: ignore
@@ -46,6 +46,11 @@ class App:
 
         try:
             return chain(request)
+        except ZoeNonHttpError as non_http_exc:
+            return InternalServerException.from_unexpected_error(
+                error=non_http_exc,
+                request=request
+            ).to_response()
         except ZoeHttpException as exc:
             return exc.to_response()
         except Exception as exc:
