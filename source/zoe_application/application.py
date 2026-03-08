@@ -7,14 +7,36 @@ from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
 from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from zoe_exceptions.exc_internal_exc import InternalServerException
 from zoe_exceptions.http_exceptions.exc_not_found import RouteNotFoundException
+from typing import Callable
 
 class App:
     def __init__(self: "App") -> None:
         self.__base_router: Router = Router(prefix="")
         self.__routers: list[Router] = [self.__base_router]
         self.__middlewares: list[Middleware] = []
+        self.__startup_callables: list[Callable] = []
+        self.__shutdown_callables: list[Callable] = []
         self.__application_builtin_handlers()
 
+    def on_startup(self: "App"):
+        def callable_wrapper(fn: Callable) -> Callable:
+            self.__startup_callables.append(fn)
+            return fn
+        return callable_wrapper
+
+    def on_shutdown(self: "App"):
+        def callable_wrapper(fn: Callable) -> Callable:
+            self.__shutdown_callables.append(fn)
+            return fn
+        return callable_wrapper
+
+    def _run_all_startup_callables(self: "App") -> None:
+        for fn in self.__startup_callables:
+            fn()
+
+    def _run_all_shutdown_callables(self: "App") -> None:
+        for fn in self.__shutdown_callables:
+            fn()
 
     def use(self: "App", to_add: Route | Routes | Router | Middleware) -> "App":
         if isinstance(to_add, Route):
