@@ -1,5 +1,6 @@
 import socket
 import threading
+import os
 from concurrent.futures import ThreadPoolExecutor
 
 from zoe_net._server_util import _ServerUtil
@@ -152,9 +153,10 @@ class Server:
         self._socket.settimeout(1.0)
         self._socket.listen(128)
 
-        max_workers = self._max_connections if self._max_connections > 0 else None
+        max_workers = self._max_connections if self._max_connections > 0 else (os.cpu_count() or 1) * 4
 
         _ServerUtil.print_server_listening(host=self.__host, port=self.__port)
+        self.__app._run_all_startup_callables()
 
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
             try:
@@ -175,3 +177,4 @@ class Server:
             finally:
                 pool.shutdown(wait=False, cancel_futures=True)
                 self._socket.close()
+                self.__app._run_all_shutdown_callables()
