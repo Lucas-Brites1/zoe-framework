@@ -2,6 +2,7 @@ from typing import Any
 
 from zoe_http.code import HttpCode
 from datetime import datetime, timezone
+import uuid
 
 class Response:
     def __init__(self, http_code: HttpCode, headers: dict[str,Any ] | None = None) -> None:
@@ -10,6 +11,7 @@ class Response:
         self.__headers: dict[str, str] = {
           "Date": datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT"),
           "X-Powered-By": "Zoe",
+          "X-Request-ID": f"{uuid.uuid4()}",
           **(dict(headers) if headers else {})
         }
 
