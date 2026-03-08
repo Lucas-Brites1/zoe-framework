@@ -5,11 +5,17 @@ class Multipart:
     self.__fields = fields
     self.__files = files
 
-  def file(self, key: str) -> list[UploadFile] | UploadFile | None:
+  #def file para UploadFile
+  #def files para list[UploadFile] mesmo para field e fields
+  def files(self, key: str) -> list[UploadFile] | None:
     if key in self.__files:
       founded: list[UploadFile] = self.__files[key]
-      if len(founded) > 1:
-        return founded
+      return founded
+    return None
+
+  def file(self, key: str) -> UploadFile | None:
+    if key in self.__files:
+      founded: list[UploadFile] = self.__files[key]
       return founded[0]
     return None
 
@@ -19,13 +25,17 @@ class Multipart:
     except (ValueError, TypeError):
       return default
 
-  def field(self, key: str, type_: type = str, default: Any | None = None) -> Any | None:
+  def fields(self, key: str, type_: type = str, default: Any | None = None) -> list[Any] | None:
     if key in self.__fields:
       founded: list[str] = self.__fields[key]
-      if len(founded) > 1:
-        return [self.__cast_field(field, t_cast=type_, default=default) for field in founded]
+      return [self.__cast_field(field=field, t_cast=type_, default=default) for field in founded]
+    return default
+
+  def field(self, key:str, type_: type = str, default: Any | None = None) -> Any | None:
+    if key in self.__fields:
+      founded: list[str] = self.__fields[key]
       return self.__cast_field(field=founded[0], t_cast=type_, default=default)
-    return None
+    return default
 
   @classmethod
   def empty(cls) -> "Multipart":
