@@ -25,18 +25,3 @@ class ZoeSchemaException(Exception):
         self.error_code = error_code
         self.details = details or {}
         super().__init__(message)
-
-    def to_response(self, model_name: str) -> Response:
-        return Response.json(
-            http_code=HttpCode.BAD_REQUEST,
-            body={
-                "error": {
-                    "type": "SCHEMA_VALIDATION_ERROR",
-                    "code": self.error_code.value,
-                    "model": model_name,
-                    "field": self.field_name,
-                    "message": self.message,
-                    "details": self.details
-                }
-            }
-        )

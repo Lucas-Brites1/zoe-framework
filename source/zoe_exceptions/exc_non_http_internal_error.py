@@ -1,6 +1,11 @@
 class ZoeNonHttpError(Exception):
-    def __init__(self, exception_message: str) -> None:
-        super().__init__(exception_message)
-        self.exception_message = exception_message
-
-    
+    def __init__(
+        self,
+        why: str,          # "Unresolved dependency 'db: Database'"
+        explain: str,      # "The parameter 'db' of type 'Database' was not found..."
+        fix: str,          # "@Singleton\nclass Database: ..."
+    ) -> None:
+        self.why = why
+        self.explain = explain
+        self.fix = fix
+        super().__init__(why)
