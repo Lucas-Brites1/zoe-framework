@@ -1,7 +1,7 @@
 from typing import Any, Protocol, runtime_checkable
 from zoe_http.request import Request
 from zoe_http.response import Response
-from zoe_exceptions.http_exceptions.exc_internal_exc import InternalServerException
+from zoe_exceptions.exc_internal_exc import InternalServerException
 
 @runtime_checkable
 class Handler(Protocol):
