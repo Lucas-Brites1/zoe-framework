@@ -7,20 +7,22 @@ from typing import Type, Any
 from inspect import isclass, isfunction
 
 class Scoped:
-    def __init__(self, key: str | None = None, **kwargs):
+    def __init__(self, key: str | None = None, **kwargs) -> None:
         if isclass(key) or isfunction(key):
             raise ZoeNonHttpError(
-                exception_message=(
-                    f"Invalid usage of @Scoped decorator\n\n"
-                    f"You wrote:\n"
+                why=f"Invalid usage of @Scoped on '{key.__name__}'",
+                explain=(
+                    f"@Scoped was used without parentheses:\n\n"
                     f"  @Scoped\n"
-                    f"  class {key.__name__}: ...\n\n"
-                    f"Correct usage:\n"
-                    f"  @Scoped()  # <- Add parentheses!\n"
+                    f"  class {key.__name__}: ..."
+                ),
+                fix=(
+                    f"Add parentheses to the decorator:\n\n"
+                    f"  @Scoped()\n"
                     f"  class {key.__name__}: ...\n\n"
                     f"Or with parameters:\n"
-                    f"  @Scoped(key='custom_key', param1='value1', param2='value2' ...)\n"
-                    f"  class {key.__name__}: ...\n"
+                    f"  @Scoped(key='custom_key', param1='value1')\n"
+                    f"  class {key.__name__}: ..."
                 )
             )
 

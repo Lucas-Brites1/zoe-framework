@@ -5,7 +5,7 @@ from zoe_router.router import Route, Routes, Router
 from zoe_http.middleware import Middleware
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
 from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
-from zoe_exceptions.http_exceptions.exc_internal_exc import InternalServerException
+from zoe_exceptions.exc_internal_exc import InternalServerException
 from zoe_exceptions.http_exceptions.exc_not_found import RouteNotFoundException
 
 class App:
@@ -47,7 +47,7 @@ class App:
         try:
             return chain(request)
         except ZoeNonHttpError as non_http_exc:
-            return InternalServerException.from_unexpected_error(
+            return InternalServerException.from_non_http_error(
                 error=non_http_exc,
                 request=request
             ).to_response()

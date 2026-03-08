@@ -8,7 +8,7 @@ from zoe_http.response import Response
 from zoe_net.connection import Connection
 from zoe_application.application import App
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
-from zoe_exceptions.http_exceptions.exc_internal_exc import InternalServerException
+from zoe_exceptions.exc_internal_exc import InternalServerException
 from zoe_http.bytes import Bytes
 
 class Server:

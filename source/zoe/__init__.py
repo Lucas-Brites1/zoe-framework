@@ -54,7 +54,7 @@ from zoe_middlewares.static_files import StaticFiles
 # Exceptions
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
 from zoe_exceptions.http_exceptions.exc_not_found import RouteNotFoundException
-from zoe_exceptions.http_exceptions.exc_internal_exc import InternalServerException
+from zoe_exceptions.exc_internal_exc import InternalServerException
 from zoe_exceptions.schemas_exceptions.exc_base import ErrorCode
 from zoe_exceptions.schemas_exceptions.exc_aggregate import ZoeSchemaAggregateException
 

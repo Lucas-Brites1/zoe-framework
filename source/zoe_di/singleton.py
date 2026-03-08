@@ -6,34 +6,30 @@ from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from typing import Type, Any
 from inspect import isclass, isfunction
 
-#@Singleton
-#class Database:
-# == Singleton(Database)
-#@Singleton.params(...)
-
 class Singleton:
-  def __init__(self, key: str | None = None, **kwargs) -> Any:
-    if isclass(key) or isfunction(key):
+    def __init__(self, key: str | None = None, **kwargs) -> None:
+        if isclass(key) or isfunction(key):
             raise ZoeNonHttpError(
-                exception_message=(
-                    f"Invalid usage of @Singleton decorator\n\n"
-                    f"You wrote:\n"
+                why=f"Invalid usage of @Singleton on '{key.__name__}'",
+                explain=(
+                    f"@Singleton was used without parentheses:\n\n"
                     f"  @Singleton\n"
-                    f"  class {key.__name__}: ...\n\n"
-                    f"Correct usage:\n"
-                    f"  @Singleton()  # <- Add parentheses!\n"
+                    f"  class {key.__name__}: ..."
+                ),
+                fix=(
+                    f"Add parentheses to the decorator:\n\n"
+                    f"  @Singleton()\n"
                     f"  class {key.__name__}: ...\n\n"
                     f"Or with parameters:\n"
-                    f"  @Singleton(key='custom_key', param1='value1', param2='value2' ...)\n"
-                    f"  class {key.__name__}: ...\n"
+                    f"  @Singleton(key='custom_key', param1='value1')\n"
+                    f"  class {key.__name__}: ..."
                 )
             )
 
-    self.params = kwargs
-    self.key = key
-  
-  def __call__(self, type_ref: Any) -> Any:
-    singleton_box = Box(obj=type_ref, lifecycle=SINGLETON, key=self.key, params=self.params)
-    Container.provide(singleton_box)
-    return type_ref
-   
+        self.params = kwargs
+        self.key = key
+
+    def __call__(self, type_ref: Any) -> Any:
+        singleton_box = Box(obj=type_ref, lifecycle=SINGLETON, key=self.key, params=self.params)
+        Container.provide(singleton_box)
+        return type_ref
