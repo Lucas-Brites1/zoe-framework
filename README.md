@@ -2,7 +2,7 @@
 
 > A lightweight Python web framework. Simple by design, loyal to your codebase, and powerful by nature.
 
-```
+```bash
 pip install zoe-framework
 ```
 
@@ -11,39 +11,37 @@ pip install zoe-framework
 [![License](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
 [![Status](https://img.shields.io/badge/status-alpha-red)]()
 
+**Full documentation at [zoe-framework.dev](https://zoe-framework.dev)**
+
 ---
 
 ## Why Zoe?
 
 - **Zero dependencies** — pure Python standard library, nothing else
 - **Type-aware handlers** — declare your body type, Zoe validates and injects it automatically
-- **Built-in validation** — schema validation with rich error messages out of the box
-- **Chainable API** — fluent router and middleware chaining
-- **Dependency Injection** — register services once, inject anywhere via type hints
+- **Built-in validation** — schema validation with rich, aggregated error messages out of the box
+- **Dependency Injection** — register services once, inject anywhere via type hints with `@Singleton`, `@Transient`, and `@Scoped`
+- **Multipart support** — file uploads with typed field access out of the box
 - **Auth ready** — Bearer, Basic and ApiKey support built in
+- **Lifecycle hooks** — `@app.on_startup` and `@app.on_shutdown` for resource management
 
 ---
 
 ## Quick Start
 
 ```python
-from zoe import App, Server, Router, Handler, Response, HttpCode
-from zoe import Model, Field, NotNull, Email, Length, Logger
+from zoe import App, Server, Router, Request, Response, HttpCode
 
-class CreateUserDto(Model):
-    login: str = Field(NotNull(), Length(min=3, max=50))
-    email: str = Field(NotNull(), Email())
+router = Router(prefix="/")
 
-class CreateUserHandler(Handler):
-    def handle(self, body: CreateUserDto) -> Response:
-        return Response(HttpCode.CREATED, body={"user": body})
+@router.get("/hello")
+def hello(req: Request) -> Response:
+    return Response.text(HttpCode.OK, text="Hello, world!")
 
 if __name__ == "__main__":
     app = App()
-    app.use(Logger("MyApp")) \
-       .use(Router("/users").POST("", CreateUserHandler()))
-
-    Server(app).run()
+    app.use(router)
+    Server(application=app).run()
 ```
 
 ```
@@ -65,45 +63,105 @@ pip install zoe-framework
 
 ## Core Concepts
 
-### Handlers
-
-Extend `Handler` and implement `handle()`. Access the request via `self.request`.
-
-```python
-class GetUserHandler(Handler):
-    def handle(self) -> Response:
-        user_id = self.request.path_params.user_id
-        token   = self.request.auth.bearer_token
-        page    = self.request.query_params.page
-        return Response(HttpCode.OK, body={"id": user_id})
-```
-
 ### Routing
 
-Group routes under a `Router` with a shared prefix. Chain HTTP methods fluently.
+Define routes with function decorators or class-based handlers. Group routes under a `Router` with a shared prefix.
+
+**Function-based:**
+```python
+router = Router(prefix="/users")
+
+@router.get("/{user_id}")
+def get_user(req: Request) -> Response:
+    user_id = req.path_params.get("user_id")
+    return Response.json(HttpCode.OK, body={"id": user_id})
+
+@router.post("/")
+def create_user(req: Request) -> Response:
+    return Response.json(HttpCode.CREATED, body={"created": True})
+```
+
+**Class-based:**
+```python
+from zoe import Handler
+
+class GetUserHandler(Handler):
+    def handle(self, req: Request) -> Response:
+        user_id = req.path_params.get("user_id")
+        return Response.json(HttpCode.OK, body={"id": user_id})
+```
+
+---
+
+### Request
+
+Access everything about the incoming request through the `Request` object:
 
 ```python
-user_router = Router("/users")
-user_router \
-    .POST("",            CreateUserHandler()) \
-    .GET("",             ListUsersHandler())  \
-    .GET("/{user_id}",   GetUserHandler())    \
-    .PUT("/{user_id}",   UpdateUserHandler()) \
-    .DELETE("/{user_id}", DeleteUserHandler())
+@router.get("/example/{id}")
+def example(req: Request) -> Response:
+    # Path params
+    user_id = req.path_params.get("id")
 
-app.use(user_router)
+    # Query params — with type coercion and default
+    page  = req.query_params.get("page",  type_=int, default=1)
+    limit = req.query_params.get("limit", type_=int, default=10)
+
+    # Auth
+    token       = req.auth.bearer_token
+    credentials = req.auth.basic_credentials  # (username, password)
+    api_key     = req.auth.api_key
+
+    # Headers
+    content_type = req.content_type
+
+    return Response.json(HttpCode.OK, body={})
 ```
+
+---
+
+### Response
+
+Zoe provides typed response builders for every content type:
+
+```python
+# JSON — accepts dicts, lists, Model instances
+Response.json(HttpCode.OK, body={"key": "value"})
+
+# Plain text
+Response.text(HttpCode.OK, text="Hello!")
+
+# HTML
+Response.html(HttpCode.OK, html_content="<h1>Hello</h1>")
+
+# Redirect
+Response.redirect(HttpCode.FOUND, redirect_to="/new-path")
+
+# File — serves inline or as download
+Response.file(HttpCode.OK, filename="report.pdf", directory="./files")
+Response.file(HttpCode.OK, filename="data.csv", force_download=True)
+```
+
+---
 
 ### Models & Validation
 
-Extend `Model` and annotate fields with `Field` and validators. Zoe validates the request body and returns **all errors at once**.
+Extend `Model` and annotate fields with `Field` and validators. Zoe validates the request body automatically and returns **all errors at once**.
 
 ```python
+from zoe import Model, Field, NotNull, Email, Min, Max, Password, Pattern
+
 class CreateUserDto(Model):
-    login:    str = Field(NotNull(), Length(min=3, max=50))
+    name:     str = Field(NotNull())
     email:    str = Field(NotNull(), Email())
-    age:      int = Field(NotNull(), Range(min=18, max=120))
+    age:      int = Field(NotNull(), Min(18), Max(120))
+    password: str = Field(NotNull(), Password())
     username: str = Field(NotNull(), Pattern(r"^[a-zA-Z0-9_]+$"))
+
+@router.post("/users")
+def create_user(req: Request, body: CreateUserDto) -> Response:
+    # body is already validated and instantiated
+    return Response.json(HttpCode.CREATED, body=body.to_dict())
 ```
 
 **Validation error response:**
@@ -114,8 +172,8 @@ class CreateUserDto(Model):
     "model": "CreateUserDto",
     "count": 2,
     "errors": [
-      { "field": "email",  "code": "INVALID_FORMAT", "message": "..." },
-      { "field": "age",    "code": "OUT_OF_RANGE",   "message": "..." }
+      { "field": "email",    "code": "INVALID_FORMAT", "message": "..." },
+      { "field": "password", "code": "WEAK_PASSWORD",  "message": "..." }
     ]
   }
 }
@@ -127,81 +185,150 @@ class CreateUserDto(Model):
 |---|---|
 | `NotNull()` | Field is required, cannot be null |
 | `Email()` | Must be a valid email address |
-| `Length(min, max)` | String or list length |
+| `Password()` | Must meet password strength requirements |
+| `Min(n)` | Minimum numeric value or string/list length |
+| `Max(n)` | Maximum numeric value or string/list length |
 | `Range(min, max)` | Numeric range |
 | `Pattern(regex)` | Must match a regex pattern |
+| `OneOf(*values)` | Must be one of the given values |
+| `Assert(fn, msg)` | Custom assertion function |
+
+---
+
+### File Uploads
+
+Access multipart form data via `req.multipart`:
+
+```python
+@router.post("/upload")
+def upload(req: Request) -> Response:
+    # Single file
+    photo = req.multipart.file("photo")          # UploadFile | None
+    saved = photo.save(path="./uploads", from_root=True, create_dirs=True)
+
+    # Multiple files with same field name
+    attachments = req.multipart.files("attachments")  # list[UploadFile] | None
+
+    # Text fields
+    title = req.multipart.field("title")              # str | None
+    count = req.multipart.field("count", type_=int)   # int | None
+
+    return Response.json(HttpCode.OK, body={"saved": str(saved)})
+```
+
+**UploadFile properties:**
+```python
+photo.filename   # original filename
+photo.file_type  # MIME type (e.g. "image/jpeg")
+photo.size       # size in bytes
+photo.data_bytes # raw bytes
+photo.text       # decoded as UTF-8 (for text files only)
+```
+
+---
+
+### Dependency Injection
+
+Register services with `@Singleton`, `@Transient`, or `@Scoped`. Zoe resolves and injects them via type hints — no boilerplate.
+
+```python
+from zoe import Singleton, Transient, Scoped
+
+@Singleton(host="localhost", port=5432)
+class Database:
+    def __init__(self, host: str, port: int):
+        self.conn = connect(host, port)
+
+    def query(self, sql: str): ...
+
+@router.get("/users")
+def list_users(req: Request, db: Database) -> Response:
+    users = db.query("SELECT * FROM users")
+    return Response.json(HttpCode.OK, body=users)
+```
+
+**Lifecycle comparison:**
+
+| Decorator | Behavior |
+|---|---|
+| `@Singleton()` | One instance shared across the entire application |
+| `@Transient()` | New instance created every time it's resolved |
+| `@Scoped()` | One instance per request, shared within that request |
+
+---
 
 ### Middlewares
 
 Register middlewares with `app.use()`. They execute in registration order.
 
 ```python
-app.use(CORS(allowed_origins=["https://mysite.com"])) \
-   .use(Logger("MyApp", verbose=False))               \
-   .use(Limiter(max_requests=100, window_seconds=60)) \
-   .use(user_router)
+from zoe import Logger, Limiter, CORS, Helmet, BodyLimiter, Guard, BearerStrategy
+
+app = App()
+app.use(CORS(allowed_origins=["https://mysite.com"]))
+app.use(Logger())
+app.use(Limiter(max_requests=100, window_seconds=60))
+app.use(Helmet())
+app.use(BodyLimiter(max_size_mb=5))
+app.use(Guard(strategy=BearerStrategy(secret="my-secret")))
+app.use(router)
 ```
 
 **Built-in middlewares:**
 
 | Middleware | Description |
 |---|---|
-| `Logger(name, verbose)` | Color-coded request logs with response time |
+| `Logger()` | Color-coded request logs with response time |
 | `Limiter(max_requests, window_seconds)` | IP-based rate limiting |
-| `CORS(allowed_origins, allowed_methods, allowed_headers)` | CORS with preflight support |
+| `CORS(...)` | CORS with preflight support |
+| `Helmet()` | Security headers (XSS, HSTS, etc.) |
+| `BodyLimiter(max_size_mb)` | Limit request body size |
+| `Guard(strategy)` | Auth enforcement — Bearer, Basic, ApiKey |
+| `StaticFiles(directory)` | Serve static files |
 
 **Custom middleware:**
 
 ```python
-def auth_guard(request, next):
-    if not request.auth.bearer_token:
-        return Response(HttpCode.UNAUTHORIZED)
-    return next(request)
+from zoe import Middleware, Request, Response
 
-app.use(auth_guard)
+class MyMiddleware(Middleware):
+    def process(self, request: Request, next) -> Response:
+        print(f"Before: {request.route}")
+        response = next(request)
+        print(f"After: {response.status_code}")
+        return response
 ```
 
-### Dependency Injection
+---
 
-Register any class instance with `Container.provide(Box(...))`. Zoe resolves dependencies automatically via type hints in `handle()`.
+### Lifecycle Hooks
+
+Run code before the server starts accepting requests or after it shuts down:
 
 ```python
-from zoe import Container, Box
+app = App()
 
-# register once at startup
-Container.provide_many(
-    Box(Database(dsn="postgresql://...")),
-    Box(EmailService()),
-)
+@app.on_startup()
+def connect():
+    print("Connecting to database...")
 
-# inject via type hint — no __init__ needed
-class CreateUserHandler(Handler):
-    def handle(self, body: CreateUserDto, db: Database, email: EmailService) -> Response:
-        user = db.create(body)
-        email.send_welcome(user.email)
-        return Response(HttpCode.CREATED, body={"user": user})
+@app.on_shutdown()
+def disconnect():
+    print("Closing connections...")
+
+Server(application=app).run()
 ```
 
-For functions or multiple instances of the same class, use an explicit key:
+---
+
+### Environment Variables
 
 ```python
-Container.provide(Box(my_function, key="my_function"))
+from zoe import Env
 
-class MyHandler(Handler):
-    def handle(self, my_function: callable) -> Response:
-        my_function()
-        ...
-```
-
-### Auth
-
-Access authentication headers via `self.request.auth`:
-
-```python
-token       = self.request.auth.bearer_token     # Bearer <token>
-credentials = self.request.auth.basic_credentials # (username, password)
-api_key     = self.request.auth.api_key           # ApiKey <key>
-scheme      = self.request.auth.scheme            # "Bearer", "Basic", "ApiKey"
+db_url  = Env.get("DATABASE_URL")
+port    = Env.get("PORT", default="8080")
+debug   = Env.get_bool("DEBUG", default=False)
 ```
 
 ---
@@ -209,57 +336,62 @@ scheme      = self.request.auth.scheme            # "Bearer", "Basic", "ApiKey"
 ## Full Example
 
 ```python
-from zoe import App, Server, Router, Handler, Response, HttpCode
-from zoe import Model, Field, NotNull, Email, Length, Range
-from zoe import Logger, Limiter, CORS, Container, Box
+from zoe import App, Server, Router, Request, Response, HttpCode
+from zoe import Model, Field, NotNull, Email, Min, Max
+from zoe import Singleton, Logger, CORS, Limiter
+
+@Singleton()
+class UserRepository:
+    def __init__(self):
+        self._users = {}
+
+    def create(self, name: str, email: str) -> dict:
+        user_id = str(len(self._users) + 1)
+        self._users[user_id] = {"id": user_id, "name": name, "email": email}
+        return self._users[user_id]
+
+    def find_all(self) -> list:
+        return list(self._users.values())
+
+    def find(self, user_id: str) -> dict | None:
+        return self._users.get(user_id)
 
 class CreateUserDto(Model):
-    login:    str = Field(NotNull(), Length(min=3, max=50))
-    email:    str = Field(NotNull(), Email())
-    age:      int = Field(NotNull(), Range(min=18, max=120))
+    name:  str = Field(NotNull())
+    email: str = Field(NotNull(), Email())
+    age:   int = Field(NotNull(), Min(18), Max(120))
 
-_users = {}
+router = Router(prefix="/users")
 
-class CreateUserHandler(Handler):
-    def handle(self, body: CreateUserDto) -> Response:
-        user_id = str(len(_users) + 1)
-        _users[user_id] = body
-        return Response(HttpCode.CREATED, body={"id": user_id, "user": body})
+@router.post("/")
+def create_user(req: Request, body: CreateUserDto, repo: UserRepository) -> Response:
+    user = repo.create(name=body.name, email=body.email)
+    return Response.json(HttpCode.CREATED, body=user)
 
-class GetUserHandler(Handler):
-    def handle(self) -> Response:
-        user_id = self.request.path_params.user_id
-        user = _users.get(user_id)
-        if not user:
-            return Response(HttpCode.NOT_FOUND, body={"error": "User not found"})
-        return Response(HttpCode.OK, body={"user": user})
+@router.get("/")
+def list_users(req: Request, repo: UserRepository) -> Response:
+    return Response.json(HttpCode.OK, body=repo.find_all())
 
-class ListUsersHandler(Handler):
-    def handle(self) -> Response:
-        page  = int(self.request.query_params.page or 1)
-        limit = int(self.request.query_params.limit or 10)
-        users = list(_users.values())
-        start = (page - 1) * limit
-        return Response(HttpCode.OK, body={
-            "users": users[start:start + limit],
-            "total": len(users),
-            "page":  page,
-        })
+@router.get("/{user_id}")
+def get_user(req: Request, repo: UserRepository) -> Response:
+    user_id = req.path_params.get("user_id")
+    user = repo.find(user_id)
+    if user is None:
+        return Response.json(HttpCode.NOT_FOUND, body={"error": "User not found"})
+    return Response.json(HttpCode.OK, body=user)
 
 if __name__ == "__main__":
-    user_router = Router("/users")
-    user_router \
-        .POST("",           CreateUserHandler()) \
-        .GET("",            ListUsersHandler())  \
-        .GET("/{user_id}",  GetUserHandler())
-
     app = App()
-    app.use(CORS(allowed_origins=["http://localhost:3000"])) \
-       .use(Logger("MyApp"))                                 \
-       .use(Limiter(max_requests=100, window_seconds=60))    \
-       .use(user_router)
+    app.use(CORS(allowed_origins=["http://localhost:3000"]))
+    app.use(Logger())
+    app.use(Limiter(max_requests=100, window_seconds=60))
+    app.use(router)
 
-    Server(app).run()
+    @app.on_startup()
+    def on_start():
+        print("Server is ready!")
+
+    Server(application=app).run()
 ```
 
 ---
@@ -272,14 +404,11 @@ your-project/
 ├── routers/
 │   ├── user_router.py
 │   └── post_router.py
-├── handlers/
-│   ├── user_handlers.py
-│   └── post_handlers.py
-├── schemas/
+├── dtos/
 │   ├── user_dto.py
 │   └── post_dto.py
 └── services/
-    ├── database.py
+    ├── user_repository.py
     └── email_service.py
 ```
 
@@ -291,24 +420,23 @@ Zoe is currently in **alpha**. The API may change between versions.
 
 | Version | Focus | Status |
 |---|---|---|
-| `v0.1.0` | Core framework, routing, validation, DI, CORS | current |
-| `v0.2.0` | Tests, optional fields, `Optional[T]` support | soon |
-| `v0.3.0` | Multiple response types (HTML, File, Redirect) | soon|
-| `v0.4.0` | File upload, multipart/form-data | soon|
-| `v0.5.0` | Async/await support | soon |
-| `v1.0.0` | Stable API, full docs, production-ready | soon |
+| `v0.1.0` | Core framework, routing, validation, DI, middlewares, multipart | **current** |
+| `v0.2.0` | Test client, optional fields, `Optional[T]` support | soon |
+| `v0.3.0` | OpenAPI/Swagger generation from Models | soon |
+| `v0.4.0` | Async/await support | planned |
+| `v1.0.0` | Stable API, full docs, production-ready | planned |
 
-> Not recommended for production use in this stage.
+> Not recommended for production use at this stage.
 
 ---
 
 ## About
 
-Zoe is named after my Golden Retriever. The goal is to eventually build a meaningful project named after each of my dogs as a way to honor them. 🐾
+Zoe is named after my Golden Retriever. The goal is to eventually build a meaningful project named after each of my dogs. 🐾
 
-**Zoe** — 5 years old, Golden Retriever, loves toys and naps
-**Mayla** — 4 years old, Golden Retriever, loves walks and naps
-**Clara** — 2 years old, Dachshund, obsessed with fetch
+- **Zoe** — 5 years old, Golden Retriever, loves toys and naps
+- **Mayla** — 4 years old, Golden Retriever, loves walks and naps
+- **Clara** — 2 years old, Dachshund, obsessed with fetch
 
 ---
 
