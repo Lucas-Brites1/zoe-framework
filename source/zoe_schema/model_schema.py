@@ -14,7 +14,18 @@ class Model:
     raise AttributeError(f"'{type(self).__name__}' has no field '{name}'")
 
   def to_dict(self: "Model") -> dict:
-    return self.__dict__
+    result: dict = {}
+    for attr_name, attr in self.__dict__.items():
+      result[attr_name] = self.__serialize(attr=attr)
+    return result
+
+  def __serialize(self, attr: Any) -> Any:
+    if isinstance(attr, Model):
+      return attr.to_dict()
+    elif isinstance(attr, list):
+      return [self.__serialize(item) for item in attr]
+    else:
+      return attr
 
   @classmethod
   def is_model(cls, class_reference: type) -> bool:
