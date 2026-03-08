@@ -90,7 +90,7 @@ class Router:
         for middleware in reversed(self.__router_middlewares):
             current = pipeline
             def make_next(m, n):
-                return lambda req: m(req, n)
+                return lambda req: m.process(req, n)
             pipeline = make_next(middleware, current)
 
         return pipeline(request)
@@ -230,17 +230,36 @@ class Router:
                 if isinstance(instance, Handler):
                     return instance
             except Exception as e:
-                raise ZoeNonHttpError (
-                    exception_message=f"Failed to instantiate handler class '{fn_or_handler.__name__}': {e}"
-            )
+                raise ZoeNonHttpError(
+                    why=f"Failed to instantiate handler class '{fn_or_handler.__name__}'",
+                    explain=(
+                        f"An exception was raised while trying to instantiate '{fn_or_handler.__name__}':\n"
+                        f"{e}"
+                    ),
+                    fix=(
+                        f"Make sure '{fn_or_handler.__name__}' can be instantiated without arguments,\n"
+                        f"or register it as a dependency in the Container."
+                    )
+                )
 
         if isfunction(fn_or_handler) or ismethod(fn_or_handler):
             return GenericHandlerFactory.new(fn=fn_or_handler)
 
         raise ZoeNonHttpError(
-            exception_message=f"Invalid handler type: {type(fn_or_handler).__name__}"
+            why=f"Invalid handler type '{type(fn_or_handler).__name__}'",
+            explain=(
+                f"Expected a Handler instance, a Handler subclass, or a function.\n"
+                f"Received: {type(fn_or_handler).__name__}"
+            ),
+            fix=(
+                f"Use one of the supported handler formats:\n\n"
+                f"  @router.get('/endpoint')\n"
+                f"  def my_handler(req: Request) -> Response: ...\n\n"
+                f"  or:\n\n"
+                f"  class MyHandler(Handler):\n"
+                f"      def handle(self, req: Request, ...) -> Response: ..."
+            )
         )
-
 
     @property
     def assigned_routes(self) -> Routes:
