@@ -90,37 +90,42 @@ class HandlerInvoker:
   def invoke(handler: Handler, request: Request) -> Response:
     hints: dict = HandlerInvoker.get_hints(handler=handler)
 
+    Container._open_scope()
     try:
-        kwargs: dict = HandlerInvoker.resolve_kwargs(hints=hints, request=request) # type: ignore
-    except HandlerAbortException as abort:
-        return abort.response
-    except ZoeNonHttpError as e:
-        raise e
+        try:
+            kwargs: dict = HandlerInvoker.resolve_kwargs(hints=hints, request=request) # type: ignore
+        except HandlerAbortException as abort:
+            return abort.response
+        except ZoeNonHttpError as e:
+            raise e
 
-    result = handler.handle(request=request, **kwargs)
-    if result is None:
-        handler_name: str = handler.__class__.__name__
-        raise ZoeNonHttpError(
-                why=f"Handler '{handler_name}' returned None",
-                explain=(
-                    f"The handle() method must return a Response object, but it returned None.\n"
-                    f"This usually means you forgot to add 'return' before Response.type_of_response()."
-                ),
-                fix=(
-                    f"class {handler_name}(Handler):\n"
-                    f"    def handle(self, request: Request) -> Response:\n"
-                    f"        return Response.type_of_response(...)  # <- Add 'return'!"
-                )
-            )
-    if not isinstance(result, Response):
-            handler_name = handler.__class__.__name__
-
+        result = handler.handle(request=request, **kwargs)
+        if result is None:
+            handler_name: str = handler.__class__.__name__
             raise ZoeNonHttpError(
-                why=f"Handler '{handler_name}' returned invalid type",
-                explain=(
-                    f"Expected: Response\n"
-                    f"Received: {type(result).__name__}"
-                ),
-                fix=f"return Response.json(...)  # Must return Response object"
-            )
-    return result
+                    why=f"Handler '{handler_name}' returned None",
+                    explain=(
+                        f"The handle() method must return a Response object, but it returned None.\n"
+                        f"This usually means you forgot to add 'return' before Response.type_of_response()."
+                    ),
+                    fix=(
+                        f"class {handler_name}(Handler):\n"
+                        f"    def handle(self, request: Request) -> Response:\n"
+                        f"        return Response.type_of_response(...)  # <- Add 'return'!"
+                    )
+                )
+        if not isinstance(result, Response):
+                handler_name = handler.__class__.__name__
+
+                raise ZoeNonHttpError(
+                    why=f"Handler '{handler_name}' returned invalid type",
+                    explain=(
+                        f"Expected: Response\n"
+                        f"Received: {type(result).__name__}"
+                    ),
+                    fix=f"return Response.json(...)  # Must return Response object"
+                )
+        return result
+    finally:
+      Container._close_scope()
+
