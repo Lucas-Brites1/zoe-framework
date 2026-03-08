@@ -33,21 +33,6 @@ class Body:
     return self.__data
 
   @classmethod
-  def __parse_multipart(cls, body_bytes: bytes) -> dict:
-    """
-    b'
-    ----------------------------c64d95cca9664deea325b3f6
-    \r\nContent-Disposition: form-data; name="opa-key"; filename="texto-pequeno.txt"
-    \r\nContent-Type: text/plain
-    \r\n\r\ntextinho
-    \r\n----------------------------c64d95cca9664deea325b3f6--
-    \r\n'"""
-
-    boundary_delimiter: list[bytes] = body_bytes.splitlines()
-    print(boundary_delimiter)
-    return {}
-
-  @classmethod
   def __parse_body(cls, content_type: str, body_bytes: bytes) -> dict | str | bytes | None:
     result: dict | str | bytes | None = None
     base_type: str = content_type.split(";")[0].strip()
@@ -70,9 +55,6 @@ class Body:
       case "application/octet-stream":
         result = body_bytes
 
-      case "multipart/form-data":
-        result = cls.__parse_multipart(body_bytes)
-
       case "application/x-www-form-urlencoded":
         from urllib.parse import parse_qs
         result = {k: v[0] if len(v) == 1 else v for k, v in parse_qs(body_bytes.decode()).items()}
@@ -81,9 +63,15 @@ class Body:
         result = body_bytes
 
       case _:
-        ... # Raise custom error invalid request content type? IDK no support for this type ?
+        # Unsupported content type — no parser available.
+        # If you need multipart/form-data, use request.multipart instead.
+        ...
 
     return result
+
+  @classmethod
+  def empty(cls) -> "Body":
+    return cls(None, "")
 
   @classmethod
   def from_request(cls, content_type: str, body_bytes: bytes) -> "Body":
