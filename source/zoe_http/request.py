@@ -1,4 +1,3 @@
-from zoe_http._request_util.request_body import Body
 from typing import Any
 from urllib.parse import unquote
 
@@ -6,6 +5,8 @@ from zoe_http.method import HttpMethod
 from zoe_http._request_util.query_params import QueryParams
 from zoe_http._request_util.path_params import PathParams
 from zoe_http._request_util.form_params import FormParams
+from zoe_http._request_util.request_body import Body
+from zoe_http._request_util.request_multipart import Multipart
 from zoe_http._request_util.request_auth import Auth
 from zoe_exceptions.http_exceptions.exc_malformed_request import MalformedRequestException
 
@@ -29,12 +30,22 @@ class Request:
         self.__form_params = FormParams()
         self.__query_params = QueryParams()
         self.__path_params = PathParams()
+        self.__body: Body = Body.empty()
+        self.__multipart: Multipart = Multipart.empty()
 
         self.__parse()
-        self.__body: Body = Body.from_request(
-            content_type=self.__content_type,
-            body_bytes=self.__body_bytes
-        )
+
+        if "multipart/form-data" in self.__content_type:
+          self.__multipart = Multipart.from_request(
+              content_type=self.__content_type,
+              body_bytes=self.__body_bytes
+          )
+        else:
+          self.__body: Body = Body.from_request(
+              content_type=self.__content_type,
+              body_bytes=self.__body_bytes
+          )
+
         self.__auth: Auth = Auth(
             authorization_header=self.headers.get("Authorization", None)
         )
@@ -42,6 +53,10 @@ class Request:
     @property
     def body(self: "Request") -> Body:
         return self.__body
+
+    @property
+    def multipart(self: "Request") -> Multipart:
+        return self.__multipart
 
     @property
     def method(self: "Request") -> HttpMethod:
@@ -93,13 +108,13 @@ class Request:
 
     def set_path_params(self: "Request", params: dict) -> None:
         for k, v in params.items():
-            self.__path_params[k] = v
+            self.__path_params._set_param(k, unquote(v))
 
     def __parse_query_params(self: "Request", query_string: str) -> None:
         for param in query_string.split("&"):
             if "=" in param:
                 key, value = param.split("=", 1)
-                self.__query_params[key] = unquote(value)
+                self.__query_params._set_param(key=key, value=unquote(value))
 
     def __parse_request_line(self, request_raw_part: str) -> "Request":
         (method, full_path, http_version) = request_raw_part.split(" ")
