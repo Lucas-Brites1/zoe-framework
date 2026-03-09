@@ -6,6 +6,7 @@ from zoe_exceptions.exc_internal_exc import InternalServerException
 from typing import Callable, Any
 from zoe_http.request import Request
 from zoe_http.response import Response
+from typing import get_type_hints
 import sys
 
 class GenericHandlerFactory:
@@ -27,12 +28,20 @@ class GenericHandlerFactory:
         sig: Signature = signature(obj=fn)
         params = list(sig.parameters)
 
-        def handle(self, request: Request, **kwargs: Any) -> Response:
-            filtered_kwargs = {
-                k: v for k, v in kwargs.items()
-                if k in params
-            }
-            return fn(request, **filtered_kwargs)
+        hints = get_type_hints(fn)
+
+        request_param_name: str = "request"  # fallback
+        for name, type_ in hints.items():
+            if name == "return":
+                continue
+            if isinstance(type_, type) and issubclass(type_, Request):
+                request_param_name = name
+                break
+
+        def handle(self, **kwargs: Any) -> Response:
+          req = kwargs.pop(request_param_name)
+          filtered_kwargs = {k: v for k, v in kwargs.items() if k in params}
+          return fn(req, **filtered_kwargs)
 
         handle.__annotations__ = fn.__annotations__
         handler_generated: Handler = type(  # type: ignore
