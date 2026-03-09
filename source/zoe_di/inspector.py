@@ -4,7 +4,7 @@ from types import UnionType
 from dataclasses import dataclass
 from enum import Enum
 from zoe_schema.model_schema import Model
-from zoe_schema.field_schema import Field, FieldValidator
+from zoe_schema.field_schema import _Field, FieldValidator
 from zoe_schema.schema_validators.not_null import NotNull
 from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 
@@ -49,7 +49,7 @@ class FieldInfo:
   field_type: Type | None
   field_is_optional: bool
   field_body_value: Any
-  field_object: Field
+  field_object: _Field
 
 @dataclass
 class ModelInfo:
@@ -69,10 +69,10 @@ class ModelInspector:
         if attr_name == "return" or attr_name.startswith("_"):
             continue
 
-        field_obj: Field | None = model_dict.get(attr_name)
+        field_obj: _Field | None = model_dict.get(attr_name)
 
-        if not isinstance(field_obj, Field):
-            field_obj = Field()
+        if not isinstance(field_obj, _Field):
+            field_obj = _Field()
 
         if field_obj.default_value is not None:
             ModelInspector._validate_default_type(
@@ -81,14 +81,14 @@ class ModelInspector:
                 default_value=field_obj.default_value,
                 model_name=model_ref.__name__
             )
-        
+
         field_value: Any = ModelInspector._process_field_value(
-            field=field_obj, 
+            field=field_obj,
             field_type=attr_type,
-            field_name=attr_name, 
+            field_name=attr_name,
             data_ref=data_ref
         )
-        
+
         fields_[attr_name] = FieldInfo(
             field_name=attr_name,
             field_type=attr_type,
@@ -101,17 +101,17 @@ class ModelInspector:
 
   @staticmethod
   def _validate_default_type(
-      field_name: str, 
-      field_type: Type, 
+      field_name: str,
+      field_type: Type,
       default_value: Any,
       model_name: str
   ) -> None:
-      
+
       default_type = type(default_value)
-      
+
       if default_type is bool:
           origin = typing.get_origin(field_type)
-          
+
           if origin in (typing.Union, types.UnionType):
               valid_types = tuple(t for t in typing.get_args(field_type) if t is not type(None))
               if bool not in valid_types:
@@ -148,12 +148,12 @@ class ModelInspector:
                       )
                   )
               )
-          return 
-      
+          return
+
       origin = typing.get_origin(field_type)
       if origin in (typing.Union, types.UnionType):
           valid_types = tuple(t for t in typing.get_args(field_type) if t is not type(None))
-          
+
           if default_type not in valid_types:
               valid_names = " | ".join(t.__name__ for t in valid_types)
               raise InternalServerException.from_non_http_error(
@@ -193,7 +193,7 @@ class ModelInspector:
     return False
 
   @staticmethod
-  def _process_field_value(field: Field, field_name: str, field_type: Type, data_ref: dict[str, Any]) -> Any:
+  def _process_field_value(field: _Field, field_name: str, field_type: Type, data_ref: dict[str, Any]) -> Any:
       if field_name in data_ref:
           return data_ref[field_name]
 
@@ -217,7 +217,7 @@ class ModelInspector:
       model_name=model_ref.__name__,
       model_class=model_ref,
       model_fields=ModelInspector._get_fields(model_ref=model_ref, data_ref=body_data)
-    ) 
+    )
 
 class Inspector:
   @staticmethod

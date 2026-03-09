@@ -11,6 +11,7 @@ class ErrorCode(str, Enum):
     PATTERN_MISMATCH       = "PATTERN_MISMATCH"
     OUT_OF_RANGE           = "OUT_OF_RANGE"
     INVALID_LENGTH         = "INVALID_LENGTH"
+    STRICT_MODE_VIOLATION  = "STRICT_MODE_VIOLATION"
 
 class ZoeSchemaException(Exception):
     def __init__(
