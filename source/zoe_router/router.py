@@ -7,7 +7,7 @@ from zoe_http.request import Request
 from zoe_http.response import Response
 from zoe_http._handler_util.handler_invoker import HandlerInvoker
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException, HttpCode
-from zoe_exceptions.exc_non_http_internal_error import  ZoeNonHttpError
+from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from zoe_http._handler_util.handler_factory import GenericHandlerFactory
 from zoe_http._handler_util.handler_validator import HandlerValidator
 
@@ -21,6 +21,7 @@ class Router:
         self.__prefix = prefix
         self.__router_middlewares: list[Middleware] = []
         self.__already_reordered: bool = False
+        self.__compiled_routes: dict[str, tuple[re.Pattern, list[str]]] = {}
 
     def add(self, route: Route) -> None:
         self.__assigned_routes.add(route=route)
@@ -29,21 +30,23 @@ class Router:
         self.__router_middlewares.append(middleware)
         return self
 
+    def __get_compiled_pattern(self, full_path: str) -> tuple[re.Pattern, list[str]]:
+        if full_path in self.__compiled_routes:
+          return self.__compiled_routes[full_path]
+
+        param_names = re.findall(r"\{(\w+)\}", full_path)
+        regex = re.sub(r"\{\w+\}", r"([^/]+)", full_path)
+        compiled = re.compile(f"^{regex}$")
+
+        self.__compiled_routes[full_path] = (compiled, param_names)
+        return compiled, param_names
+
     def __match_path(self, pattern: str, endpoint: str) -> tuple[bool, dict]:
-        pattern_parts = pattern.split("/")
-        endpoint_parts = endpoint.split("/")
-
-        if len(pattern_parts) != len(endpoint_parts):
+        compiled, param_names = self.__get_compiled_pattern(pattern)
+        match = compiled.match(endpoint)
+        if not match:
             return False, {}
-
-        params = {}
-        for p, a in zip(pattern_parts, endpoint_parts):
-            if re.match(r"^\{\w+\}$", p):
-                params[p[1:-1]] = a
-            elif p != a:
-                return False, {}
-
-        return True, params
+        return True, dict(zip(param_names, match.groups()))
 
     def __handle_wildcard_route(self, route: Route, requested_endpoint: str, requested_method: HttpMethod) -> tuple[Handler, dict] | None:
         if "*" in route.endpoint:
@@ -54,12 +57,11 @@ class Router:
                 return route.handler, {"wildcard": wildcard_value}
         return None
 
-
     def __match_route(self, method: HttpMethod, endpoint: str) -> tuple[Handler | None, dict, bool]:
         endpoint_exists: bool = False
 
         for route in self.__assigned_routes:
-            full_path_normalized:str = self.__normalize_trailing_slash(full_path=self.__prefix + route.endpoint)
+            full_path_normalized: str = self.__normalize_trailing_slash(full_path=self.__prefix + route.endpoint)
 
             if "*" in full_path_normalized:
                 result = self.__handle_wildcard_route(
@@ -67,7 +69,6 @@ class Router:
                     requested_endpoint=endpoint,
                     requested_method=method
                 )
-
                 if result:
                     handler, params = result
                     return handler, params, False
@@ -96,29 +97,28 @@ class Router:
         return pipeline(request)
 
     def __prioritize_static_routes(self) -> None:
-        # [static_routes, parametrized_routes, wildcard_routes]
         if not self.__already_reordered:
             self.__assigned_routes.prioritize_static_routes()
             self.__already_reordered = True
 
-    def __normalize_trailing_slash(self: "Router", full_path: str) -> str:
+    def __normalize_trailing_slash(self, full_path: str) -> str:
         if len(full_path) > 1 and full_path.endswith("/"):
             return full_path[:-1]
         return full_path
-
 
     def resolve(self, method: HttpMethod, request: Request) -> Response | None:
         self.__prioritize_static_routes()
 
         endpoint: str = request.route
         handler, params, method_not_allowed = self.__match_route(method=method, endpoint=self.__normalize_trailing_slash(full_path=endpoint))
+
         if handler is None:
-          if method_not_allowed:
-              return ZoeHttpException(
-                  message=f"Method {method.value} not allowed for {endpoint}.",
-                  status_code=HttpCode.METHOD_NOT_ALLOWED
-              ).to_response()
-          return None
+            if method_not_allowed:
+                return ZoeHttpException(
+                    message=f"Method {method.value} not allowed for {endpoint}.",
+                    status_code=HttpCode.METHOD_NOT_ALLOWED
+                ).to_response()
+            return None
 
         request.set_path_params(params)
 
@@ -138,12 +138,10 @@ class Router:
             return self
 
         def post_deco(fn_wrapped: Callable | Handler) -> Handler:
-            if isinstance(fn_wrapped, Callable):
-                handler_generated_by_factory: Handler = self.__wrap_handler(fn_wrapped)
-                self.__assigned_routes.add(Route.post(endpoint=endpoint, handler=handler_generated_by_factory))
-
-            return handler_generated_by_factory  # type: ignore
-        return post_deco # type: ignore
+            handler_generated_by_factory: Handler = self.__wrap_handler(fn_wrapped)
+            self.__assigned_routes.add(Route.post(endpoint=endpoint, handler=handler_generated_by_factory))
+            return handler_generated_by_factory
+        return post_deco  # type: ignore
 
     @overload
     def get(self, endpoint: str, handler: Handler) -> "Router": ...
@@ -156,12 +154,10 @@ class Router:
             return self
 
         def get_deco(fn_wrapped: Callable | Handler) -> Handler:
-            if isinstance(fn_wrapped, Callable):
-                handler_generated_by_factory: Handler = self.__wrap_handler(fn_wrapped)
-                self.__assigned_routes.add(Route.get(endpoint=endpoint, handler=handler_generated_by_factory))
-
-            return handler_generated_by_factory # type: ignore
-        return get_deco # type: ignore
+            handler_generated_by_factory: Handler = self.__wrap_handler(fn_wrapped)
+            self.__assigned_routes.add(Route.get(endpoint=endpoint, handler=handler_generated_by_factory))
+            return handler_generated_by_factory
+        return get_deco  # type: ignore
 
     @overload
     def put(self, endpoint: str, handler: Handler) -> "Router": ...
@@ -174,13 +170,10 @@ class Router:
             return self
 
         def put_deco(fn_wrapped: Callable | Handler) -> Handler:
-            if isinstance(fn_wrapped, Callable):
-                handler_generated_by_factory: Handler = self.__wrap_handler(fn_wrapped)
-                self.__assigned_routes.add(Route.put(endpoint=endpoint, handler=handler_generated_by_factory))
-
-            return handler_generated_by_factory # type: ignore
-
-        return put_deco # type: ignore
+            handler_generated_by_factory: Handler = self.__wrap_handler(fn_wrapped)
+            self.__assigned_routes.add(Route.put(endpoint=endpoint, handler=handler_generated_by_factory))
+            return handler_generated_by_factory
+        return put_deco  # type: ignore
 
     @overload
     def patch(self, endpoint: str, handler: Handler) -> "Router": ...
@@ -193,13 +186,10 @@ class Router:
             return self
 
         def patch_deco(fn_wrapped: Callable | Handler) -> Handler:
-            if isinstance(fn_wrapped, Callable):
-                handler_generated_by_factory: Handler = self.__wrap_handler(fn_wrapped)
-                self.__assigned_routes.add(Route.patch(endpoint=endpoint, handler=handler_generated_by_factory))
-
-            return handler_generated_by_factory # type: ignore
-
-        return patch_deco # type: ignore
+            handler_generated_by_factory: Handler = self.__wrap_handler(fn_wrapped)
+            self.__assigned_routes.add(Route.patch(endpoint=endpoint, handler=handler_generated_by_factory))
+            return handler_generated_by_factory
+        return patch_deco  # type: ignore
 
     @overload
     def delete(self, endpoint: str, handler: Handler) -> "Router": ...
@@ -212,54 +202,59 @@ class Router:
             return self
 
         def delete_deco(fn_wrapped: Callable | Handler) -> Handler:
-            if isinstance(fn_wrapped, Callable):
-                handler_generated_by_factory: Handler = self.__wrap_handler(fn_wrapped)
-                self.__assigned_routes.add(Route.delete(endpoint=endpoint, handler=handler_generated_by_factory))
-
-            return handler_generated_by_factory # type: ignore
-        return delete_deco # type: ignore
+            handler_generated_by_factory: Handler = self.__wrap_handler(fn_wrapped)
+            self.__assigned_routes.add(Route.delete(endpoint=endpoint, handler=handler_generated_by_factory))
+            return handler_generated_by_factory
+        return delete_deco  # type: ignore
 
     def __wrap_handler(self, fn_or_handler: Handler | Callable) -> Handler:
-        if isinstance(fn_or_handler, Handler):
-            HandlerValidator.validate_signature(fn_or_handler.handle)
-            return fn_or_handler
+      if isclass(fn_or_handler):
+          try:
+              instance = fn_or_handler()
+          except Exception as e:
+              raise ZoeNonHttpError(
+                  why=f"Failed to instantiate handler class '{fn_or_handler.__name__}'",
+                  explain=(
+                      f"An exception was raised while trying to instantiate '{fn_or_handler.__name__}':\n"
+                      f"{e}"
+                  ),
+                  fix=(
+                      f"Make sure '{fn_or_handler.__name__}' can be instantiated without arguments,\n"
+                      f"or register it as a dependency in the Container."
+                  )
+              )
 
-        if isclass(object=fn_or_handler):
-            try:
-                instance = fn_or_handler()
-                if isinstance(instance, Handler):
-                    return instance
-            except Exception as e:
-                raise ZoeNonHttpError(
-                    why=f"Failed to instantiate handler class '{fn_or_handler.__name__}'",
-                    explain=(
-                        f"An exception was raised while trying to instantiate '{fn_or_handler.__name__}':\n"
-                        f"{e}"
-                    ),
-                    fix=(
-                        f"Make sure '{fn_or_handler.__name__}' can be instantiated without arguments,\n"
-                        f"or register it as a dependency in the Container."
-                    )
-                )
+          if not isinstance(instance, Handler):
+              raise ZoeNonHttpError(
+                  why=f"Class '{fn_or_handler.__name__}' is not a Handler subclass",
+                  explain=f"'{fn_or_handler.__name__}' must extend Handler to be used as a class-based handler.",
+                  fix=f"class {fn_or_handler.__name__}(Handler):\n    def handle(self, ...) -> Response: ..."
+              )
 
-        if isfunction(fn_or_handler) or ismethod(fn_or_handler):
-            return GenericHandlerFactory.new(fn=fn_or_handler)
+          return instance
 
-        raise ZoeNonHttpError(
-            why=f"Invalid handler type '{type(fn_or_handler).__name__}'",
-            explain=(
-                f"Expected a Handler instance, a Handler subclass, or a function.\n"
-                f"Received: {type(fn_or_handler).__name__}"
-            ),
-            fix=(
-                f"Use one of the supported handler formats:\n\n"
-                f"  @router.get('/endpoint')\n"
-                f"  def my_handler(req: Request) -> Response: ...\n\n"
-                f"  or:\n\n"
-                f"  class MyHandler(Handler):\n"
-                f"      def handle(self, req: Request, ...) -> Response: ..."
-            )
-        )
+      if isinstance(fn_or_handler, Handler):
+          HandlerValidator.validate_signature(fn_or_handler.handle)
+          return fn_or_handler
+
+      if isfunction(fn_or_handler) or ismethod(fn_or_handler):
+          return GenericHandlerFactory.new(fn=fn_or_handler)
+
+      raise ZoeNonHttpError(
+          why=f"Invalid handler type '{type(fn_or_handler).__name__}'",
+          explain=(
+              f"Expected a Handler instance, a Handler subclass, or a function.\n"
+              f"Received: {type(fn_or_handler).__name__}"
+          ),
+          fix=(
+              f"Use one of the supported handler formats:\n\n"
+              f"  @router.get('/endpoint')\n"
+              f"  def my_handler(req: Request) -> Response: ...\n\n"
+              f"  or:\n\n"
+              f"  class MyHandler(Handler):\n"
+              f"      def handle(self, req: Request, ...) -> Response: ..."
+          )
+      )
 
     @property
     def assigned_routes(self) -> Routes:
