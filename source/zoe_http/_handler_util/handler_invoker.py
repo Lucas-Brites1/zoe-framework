@@ -90,6 +90,12 @@ class HandlerInvoker:
   def invoke(handler: Handler, request: Request) -> Response:
     hints: dict = HandlerInvoker.get_hints(handler=handler)
 
+    request_param_name = "request"
+    for param_name, class_reference in hints.items():
+        if isinstance(class_reference, type) and issubclass(class_reference, Request):
+            request_param_name = param_name
+            break
+
     Container._open_scope()
     try:
         try:
@@ -99,7 +105,7 @@ class HandlerInvoker:
         except ZoeNonHttpError as e:
             raise e
 
-        result = handler.handle(request=request, **kwargs)
+        result = handler.handle(**{request_param_name: request}, **kwargs)
         if result is None:
             handler_name: str = handler.__class__.__name__
             raise ZoeNonHttpError(
