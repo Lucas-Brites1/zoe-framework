@@ -1,29 +1,27 @@
-# Zoe 🐾
+# 🐾 Zoe
 
-> A lightweight Python web framework. Simple by design, loyal to your codebase, and powerful by nature.
+A lightweight Python web framework. Zero dependencies, type-aware injection, aggregated validation.
 
 ```bash
 pip install zoe-framework
 ```
 
-[![Python](https://img.shields.io/badge/python-3.11+-gold)](https://python.org)
-[![Version](https://img.shields.io/badge/version-v0.1.0--alpha-orange)](https://pypi.org/project/zoe-framework)
-[![License](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
-[![Status](https://img.shields.io/badge/status-alpha-red)]()
+[![Python](https://img.shields.io/badge/python-3.11+-blue)](https://python.org)
+[![Version](https://img.shields.io/badge/version-v0.2.0-blue)](https://pypi.org/project/zoe-framework)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**Full documentation at [zoe-framework.dev](https://zoe-framework.dev)**
+Full documentation at [zoe-framework.dev](https://zoe-framework.dev)
 
 ---
 
 ## Why Zoe?
 
-- **Zero dependencies** — pure Python standard library, nothing else
-- **Type-aware handlers** — declare your body type, Zoe validates and injects it automatically
-- **Built-in validation** — schema validation with rich, aggregated error messages out of the box
-- **Dependency Injection** — register services once, inject anywhere via type hints with `@Singleton`, `@Transient`, and `@Scoped`
-- **Multipart support** — file uploads with typed field access out of the box
-- **Auth ready** — Bearer, Basic and ApiKey support built in
-- **Lifecycle hooks** — `@app.on_startup` and `@app.on_shutdown` for resource management
+- **Zero dependencies** — pure Python standard library
+- **Type-aware injection** — body, services, and request resolved automatically via type hints
+- **Aggregated validation** — all field errors returned at once, never just the first
+- **Three DI lifecycles** — `@Singleton`, `@Transient`, and `@Scoped` out of the box
+- **Multipart support** — file uploads with typed field access, no setup required
+- **Rich middleware stack** — Logger, CORS, Limiter, Guard, Helmet, StaticFiles, BodyLimiter
 
 ---
 
@@ -44,58 +42,97 @@ if __name__ == "__main__":
     Server(application=app).run()
 ```
 
-```
-  Zoe Framework · http://127.0.0.1:8080
-  ready to serve 🐾
-```
-
 ---
 
-## Installation
+## Routing
 
-Requires **Python 3.11+**. No additional dependencies.
+Routes can be registered using decorators or the explicit `router.add` / `Route` API.
 
-```bash
-pip install zoe-framework
-```
+### Decorator style (function-based)
 
----
-
-## Core Concepts
-
-### Routing
-
-Define routes with function decorators or class-based handlers. Group routes under a `Router` with a shared prefix.
-
-**Function-based:**
 ```python
+from zoe import Router, Request, Response, HttpCode
+
 router = Router(prefix="/users")
+
+@router.get("/")
+def list_users(req: Request) -> Response:
+    return Response.json(HttpCode.OK, body=[])
+
+@router.post("/")
+def create_user(req: Request) -> Response: ...
 
 @router.get("/{user_id}")
 def get_user(req: Request) -> Response:
     user_id = req.path_params.get("user_id")
     return Response.json(HttpCode.OK, body={"id": user_id})
 
-@router.post("/")
-def create_user(req: Request) -> Response:
-    return Response.json(HttpCode.CREATED, body={"created": True})
+@router.put("/{user_id}")
+def update_user(req: Request) -> Response: ...
+
+@router.patch("/{user_id}")
+def patch_user(req: Request) -> Response: ...
+
+@router.delete("/{user_id}")
+def delete_user(req: Request) -> Response: ...
 ```
 
-**Class-based:**
-```python
-from zoe import Handler
+### Decorator style (class-based)
 
+```python
+from zoe import Handler, Request, Response, HttpCode
+
+router = Router(prefix="/users")
+
+@router.get("/{user_id}")
 class GetUserHandler(Handler):
-    def handle(self, req: Request) -> Response:
-        user_id = req.path_params.get("user_id")
+    def handle(self, request: Request) -> Response:
+        user_id = request.path_params.get("user_id")
         return Response.json(HttpCode.OK, body={"id": user_id})
+```
+
+### Explicit registration
+
+```python
+from zoe import Router, Route
+
+router = Router(prefix="/users")
+router.add(Route.get(endpoint="/{user_id}", handler=GetUserHandler()))
+router.add(Route.post(endpoint="/", handler=CreateUserHandler()))
+router.add(Route.delete(endpoint="/{user_id}", handler=DeleteUserHandler()))
 ```
 
 ---
 
-### Request
+## Handlers
 
-Access everything about the incoming request through the `Request` object:
+Every handler receives a `Request` and must return a `Response`.
+
+### Function-based
+
+```python
+@router.get("/{user_id}")
+def get_user(req: Request) -> Response:
+    user_id = req.path_params.get("user_id")
+    return Response.json(HttpCode.OK, body={"id": user_id})
+```
+
+The `Request` parameter can be named anything as long as it is typed as `Request`.
+
+### Class-based
+
+```python
+class GetUserHandler(Handler):
+    def handle(self, request: Request) -> Response:
+        user_id = request.path_params.get("user_id")
+        return Response.json(HttpCode.OK, body={"id": user_id})
+```
+
+The `Request` parameter in class-based handlers must be named `request` — Zoe uses this name to distinguish it from injected services.
+
+---
+
+## Request
 
 ```python
 @router.get("/example/{id}")
@@ -103,33 +140,31 @@ def example(req: Request) -> Response:
     # Path params
     user_id = req.path_params.get("id")
 
-    # Query params — with type coercion and default
+    # Query params — with optional type coercion and default
     page  = req.query_params.get("page",  type_=int, default=1)
     limit = req.query_params.get("limit", type_=int, default=10)
+
+    # Headers
+    content_type = req.headers.get("Content-Type")
 
     # Auth
     token       = req.auth.bearer_token
     credentials = req.auth.basic_credentials  # (username, password)
     api_key     = req.auth.api_key
 
-    # Headers
-    content_type = req.content_type
-
     return Response.json(HttpCode.OK, body={})
 ```
 
 ---
 
-### Response
-
-Zoe provides typed response builders for every content type:
+## Response
 
 ```python
 # JSON — accepts dicts, lists, Model instances
 Response.json(HttpCode.OK, body={"key": "value"})
 
 # Plain text
-Response.text(HttpCode.OK, text="Hello!")
+Response.text(HttpCode.OK, text="Hello")
 
 # HTML
 Response.html(HttpCode.OK, html_content="<h1>Hello</h1>")
@@ -137,34 +172,80 @@ Response.html(HttpCode.OK, html_content="<h1>Hello</h1>")
 # Redirect
 Response.redirect(HttpCode.FOUND, redirect_to="/new-path")
 
-# File — serves inline or as download
+# File — inline or forced download
 Response.file(HttpCode.OK, filename="report.pdf", directory="./files")
 Response.file(HttpCode.OK, filename="data.csv", force_download=True)
 ```
 
 ---
 
-### Models & Validation
+## Models and Validation
 
-Extend `Model` and annotate fields with `Field` and validators. Zoe validates the request body automatically and returns **all errors at once**.
+Extend `Model` and annotate fields with `Field` and validators. Zoe validates the request body automatically and returns all errors at once.
+
+### Basic usage
 
 ```python
-from zoe import Model, Field, NotNull, Email, Min, Max, Password, Pattern
+from zoe import Model, Field, NotNull, Email, Min, Max, Password, Pattern, OneOf, Assert
 
 class CreateUserDto(Model):
     name:     str = Field(NotNull())
     email:    str = Field(NotNull(), Email())
     age:      int = Field(NotNull(), Min(18), Max(120))
     password: str = Field(NotNull(), Password())
-    username: str = Field(NotNull(), Pattern(r"^[a-zA-Z0-9_]+$"))
+    role:     str = Field(NotNull(), OneOf("admin", "user", "guest"))
 
 @router.post("/users")
 def create_user(req: Request, body: CreateUserDto) -> Response:
-    # body is already validated and instantiated
     return Response.json(HttpCode.CREATED, body=body.to_dict())
 ```
 
-**Validation error response:**
+### Optional fields and defaults
+
+```python
+class UpdateUserDto(Model):
+    name:  str | None = Field()                 # optional, no default
+    email: str | None = Field()                 # optional, no default
+    role:  str        = Field(default="user")   # required type, default value
+```
+
+### Required validator
+
+`Required()` differs from `NotNull()` in intent: it asserts that the field must be explicitly present in the body, regardless of type.
+
+```python
+class CreatePostDto(Model):
+    title:   str = Field(Required())
+    content: str = Field(Required())
+```
+
+### Nested models
+
+```python
+class AddressDto(Model):
+    street: str = Field(NotNull())
+    city:   str = Field(NotNull())
+    zip:    str = Field(NotNull(), Pattern(r"^\d{5}$"))
+
+class CreateUserDto(Model):
+    name:    str        = Field(NotNull())
+    email:   str        = Field(NotNull(), Email())
+    address: AddressDto = Field(NotNull())
+```
+
+Nested models are validated recursively. Errors from nested fields are included in the same aggregated response.
+
+### Strict mode
+
+```python
+class StrictDto(Model):
+    __strict__ = True
+    name: str = Field(NotNull())
+    # extra fields in the body will return a 400 error
+```
+
+### Validation error response
+
 ```json
 {
   "error": {
@@ -179,11 +260,12 @@ def create_user(req: Request, body: CreateUserDto) -> Response:
 }
 ```
 
-**Available validators:**
+### Available validators
 
 | Validator | Description |
 |---|---|
-| `NotNull()` | Field is required, cannot be null |
+| `NotNull()` | Value must not be null |
+| `Required()` | Field must be present in the body |
 | `Email()` | Must be a valid email address |
 | `Password()` | Must meet password strength requirements |
 | `Min(n)` | Minimum numeric value or string/list length |
@@ -195,74 +277,78 @@ def create_user(req: Request, body: CreateUserDto) -> Response:
 
 ---
 
-### File Uploads
+## Dependency Injection
 
-Access multipart form data via `req.multipart`:
-
-```python
-@router.post("/upload")
-def upload(req: Request) -> Response:
-    # Single file
-    photo = req.multipart.file("photo")          # UploadFile | None
-    saved = photo.save(path="./uploads", from_root=True, create_dirs=True)
-
-    # Multiple files with same field name
-    attachments = req.multipart.files("attachments")  # list[UploadFile] | None
-
-    # Text fields
-    title = req.multipart.field("title")              # str | None
-    count = req.multipart.field("count", type_=int)   # int | None
-
-    return Response.json(HttpCode.OK, body={"saved": str(saved)})
-```
-
-**UploadFile properties:**
-```python
-photo.filename   # original filename
-photo.file_type  # MIME type (e.g. "image/jpeg")
-photo.size       # size in bytes
-photo.data_bytes # raw bytes
-photo.text       # decoded as UTF-8 (for text files only)
-```
-
----
-
-### Dependency Injection
-
-Register services with `@Singleton`, `@Transient`, or `@Scoped`. Zoe resolves and injects them via type hints — no boilerplate.
+Register services with `@Singleton`, `@Transient`, or `@Scoped`. Zoe resolves them by type in handler parameters.
 
 ```python
 from zoe import Singleton, Transient, Scoped
 
+@Singleton()
+class Database:
+    def __init__(self):
+        self.conn = connect(...)
+
+@Transient()
+class EmailService:
+    def send(self, to: str, subject: str): ...
+
+@router.post("/users")
+def create_user(req: Request, body: CreateUserDto, db: Database, email: EmailService) -> Response:
+    user = db.create(body.name, body.email)
+    email.send(user.email, "Welcome")
+    return Response.json(HttpCode.CREATED, body={"id": user.id})
+```
+
+You can pass constructor arguments directly in the decorator:
+
+```python
 @Singleton(host="localhost", port=5432)
 class Database:
     def __init__(self, host: str, port: int):
         self.conn = connect(host, port)
-
-    def query(self, sql: str): ...
-
-@router.get("/users")
-def list_users(req: Request, db: Database) -> Response:
-    users = db.query("SELECT * FROM users")
-    return Response.json(HttpCode.OK, body=users)
 ```
 
-**Lifecycle comparison:**
+### Lifecycle comparison
 
 | Decorator | Behavior |
 |---|---|
 | `@Singleton()` | One instance shared across the entire application |
-| `@Transient()` | New instance created every time it's resolved |
+| `@Transient()` | New instance created on every injection |
 | `@Scoped()` | One instance per request, shared within that request |
 
 ---
 
-### Middlewares
-
-Register middlewares with `app.use()`. They execute in registration order.
+## File Uploads
 
 ```python
-from zoe import Logger, Limiter, CORS, Helmet, BodyLimiter, Guard, BearerStrategy
+@router.post("/upload")
+def upload(req: Request) -> Response:
+    photo       = req.multipart.file("photo")           # UploadFile | None
+    attachments = req.multipart.files("attachments")    # list[UploadFile] | None
+    title       = req.multipart.field("title")          # str | None
+    count       = req.multipart.field("count", type_=int)
+
+    saved = photo.save(path="./uploads", create_dirs=True)
+    return Response.json(HttpCode.OK, body={"saved": str(saved)})
+```
+
+**UploadFile properties:**
+
+| Property | Description |
+|---|---|
+| `filename` | Original filename from the form |
+| `file_type` | MIME type (e.g. `image/jpeg`) |
+| `size` | File size in bytes |
+| `data_bytes` | Raw bytes |
+| `text` | Decoded content as UTF-8 (text files only) |
+
+---
+
+## Middlewares
+
+```python
+from zoe import Logger, Limiter, CORS, Helmet, BodyLimiter, Guard, BearerStrategy, StaticFiles
 
 app = App()
 app.use(CORS(allowed_origins=["https://mysite.com"]))
@@ -270,50 +356,67 @@ app.use(Logger())
 app.use(Limiter(max_requests=100, window_seconds=60))
 app.use(Helmet())
 app.use(BodyLimiter(max_size_mb=5))
+app.use(StaticFiles(directory="./public", prefix="/static"))
 app.use(Guard(strategy=BearerStrategy(secret="my-secret")))
 app.use(router)
 ```
 
-**Built-in middlewares:**
+### Built-in middlewares
 
 | Middleware | Description |
 |---|---|
-| `Logger()` | Color-coded request logs with response time |
+| `Logger()` | Color-coded request logs with timing |
 | `Limiter(max_requests, window_seconds)` | IP-based rate limiting |
-| `CORS(...)` | CORS with preflight support |
+| `CORS(allowed_origins, ...)` | CORS headers with preflight support |
 | `Helmet()` | Security headers (XSS, HSTS, etc.) |
-| `BodyLimiter(max_size_mb)` | Limit request body size |
+| `BodyLimiter(max_size_mb)` | Reject oversized request bodies |
 | `Guard(strategy)` | Auth enforcement — Bearer, Basic, ApiKey |
-| `StaticFiles(directory)` | Serve static files |
+| `StaticFiles(directory, prefix)` | Serve static files |
 
-**Custom middleware:**
+### Guard strategies
+
+```python
+from zoe import Guard, BearerStrategy, BasicStrategy, ApiKeyStrategy, AnyStrategy, AllStrategy
+
+Guard(BearerStrategy(secret="token"))
+Guard(ApiKeyStrategy(key="key123"))
+Guard(AnyStrategy([BearerStrategy(secret="token"), ApiKeyStrategy(key="key123")]))
+Guard(AllStrategy([BearerStrategy(secret="token"), ApiKeyStrategy(key="key123")]))
+```
+
+Attach `Guard` to a specific `Router` to protect only those routes:
+
+```python
+admin_router = Router(prefix="/admin")
+admin_router.use(Guard(BearerStrategy(secret="secret")))
+```
+
+### Custom middleware
 
 ```python
 from zoe import Middleware, Request, Response
 
-class MyMiddleware(Middleware):
+class TimingMiddleware(Middleware):
     def process(self, request: Request, next) -> Response:
-        print(f"Before: {request.route}")
+        start = time.time()
         response = next(request)
-        print(f"After: {response.status_code}")
+        response.add_header("X-Response-Time", f"{time.time() - start:.3f}s")
         return response
 ```
 
 ---
 
-### Lifecycle Hooks
-
-Run code before the server starts accepting requests or after it shuts down:
+## Lifecycle Hooks
 
 ```python
 app = App()
 
 @app.on_startup()
-def connect():
+def on_start():
     print("Connecting to database...")
 
 @app.on_shutdown()
-def disconnect():
+def on_stop():
     print("Closing connections...")
 
 Server(application=app).run()
@@ -321,14 +424,25 @@ Server(application=app).run()
 
 ---
 
-### Environment Variables
+## Environment
 
 ```python
 from zoe import Env
 
-db_url  = Env.get("DATABASE_URL")
-port    = Env.get("PORT", default="8080")
-debug   = Env.get_bool("DEBUG", default=False)
+db_url = Env.get("DATABASE_URL")
+port   = Env.get("PORT", default="8080")
+debug  = Env.get_bool("DEBUG", default=False)
+```
+
+---
+
+## Exceptions
+
+```python
+from zoe import ZoeHttpException, NotFoundException, HttpCode
+
+raise ZoeHttpException(message="Forbidden", status_code=HttpCode.FORBIDDEN)
+raise NotFoundException(resource="User", identifier=user_id)
 ```
 
 ---
@@ -343,29 +457,31 @@ from zoe import Singleton, Logger, CORS, Limiter
 @Singleton()
 class UserRepository:
     def __init__(self):
-        self._users = {}
+        self._users: dict = {}
 
     def create(self, name: str, email: str) -> dict:
-        user_id = str(len(self._users) + 1)
-        self._users[user_id] = {"id": user_id, "name": name, "email": email}
-        return self._users[user_id]
+        uid = str(len(self._users) + 1)
+        self._users[uid] = {"id": uid, "name": name, "email": email}
+        return self._users[uid]
 
     def find_all(self) -> list:
         return list(self._users.values())
 
-    def find(self, user_id: str) -> dict | None:
-        return self._users.get(user_id)
+    def find(self, uid: str) -> dict | None:
+        return self._users.get(uid)
+
 
 class CreateUserDto(Model):
     name:  str = Field(NotNull())
     email: str = Field(NotNull(), Email())
     age:   int = Field(NotNull(), Min(18), Max(120))
 
+
 router = Router(prefix="/users")
 
 @router.post("/")
 def create_user(req: Request, body: CreateUserDto, repo: UserRepository) -> Response:
-    user = repo.create(name=body.name, email=body.email)
+    user = repo.create(body.name, body.email)
     return Response.json(HttpCode.CREATED, body=user)
 
 @router.get("/")
@@ -374,22 +490,19 @@ def list_users(req: Request, repo: UserRepository) -> Response:
 
 @router.get("/{user_id}")
 def get_user(req: Request, repo: UserRepository) -> Response:
-    user_id = req.path_params.get("user_id")
-    user = repo.find(user_id)
+    user = repo.find(req.path_params.get("user_id"))
     if user is None:
         return Response.json(HttpCode.NOT_FOUND, body={"error": "User not found"})
     return Response.json(HttpCode.OK, body=user)
 
+
 if __name__ == "__main__":
     app = App()
-    app.use(CORS(allowed_origins=["http://localhost:3000"]))
-    app.use(Logger())
-    app.use(Limiter(max_requests=100, window_seconds=60))
-    app.use(router)
+    app.use(CORS()).use(Logger()).use(Limiter(max_requests=100, window_seconds=60)).use(router)
 
     @app.on_startup()
     def on_start():
-        print("Server is ready!")
+        print("Server ready.")
 
     Server(application=app).run()
 ```
@@ -407,39 +520,28 @@ your-project/
 ├── dtos/
 │   ├── user_dto.py
 │   └── post_dto.py
-└── services/
-    ├── user_repository.py
-    └── email_service.py
+├── services/
+│   ├── user_repository.py
+│   └── email_service.py
+└── database/
+    └── connection.py
 ```
 
 ---
 
-## Status & Roadmap
-
-Zoe is currently in **alpha**. The API may change between versions.
+## Roadmap
 
 | Version | Focus | Status |
 |---|---|---|
-| `v0.1.0` | Core framework, routing, validation, DI, middlewares, multipart | **current** |
-| `v0.2.0` | Test client, optional fields, `Optional[T]` support | soon |
-| `v0.3.0` | OpenAPI/Swagger generation from Models | soon |
-| `v0.4.0` | Async/await support | planned |
-| `v1.0.0` | Stable API, full docs, production-ready | planned |
-
-> Not recommended for production use at this stage.
-
----
-
-## About
-
-Zoe is named after my Golden Retriever. The goal is to eventually build a meaningful project named after each of my dogs. 🐾
-
-- **Zoe** — 5 years old, Golden Retriever, loves toys and naps
-- **Mayla** — 4 years old, Golden Retriever, loves walks and naps
-- **Clara** — 2 years old, Dachshund, obsessed with fetch
+| `v0.1.0-alpha` | Core routing, validation, basic DI, middlewares | released |
+| `v0.2.0` | 3 DI lifecycles, multipart, all response types, Guard, Helmet, StaticFiles, nested models, Env | current |
+| `v0.3.0` | Global exception handler, Container.reset(), test client | planned |
+| `v0.4.0` | OpenAPI / Swagger generation | planned |
+| `v0.5.0` | Async/await support | planned |
+| `v1.0.0` | Stable API, full documentation, production-ready | planned |
 
 ---
 
 ## License
 
-MIT © [Lucas Silva Brites](https://github.com/Lucas-Brites1)
+MIT — Lucas Silva Brites

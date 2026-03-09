@@ -51,6 +51,7 @@ from zoe_schema.schema_validators.max import Max
 from zoe_schema.schema_validators.min import Min
 from zoe_schema.schema_validators.one_of import OneOf
 from zoe_schema.schema_validators.assert_validator import Assert
+from zoe_schema.schema_validators.required import Required
 
 # Middlewares
 from zoe_middlewares.logger import Logger
@@ -91,7 +92,7 @@ __all__ = [  # type: ignore
     # Dependency Injection
     "Container", "Box", "Singleton", "Transient", "Scoped",
     # Validators
-    "NotNull", "Range", "Email", "Pattern", "Password", "Min", "Max", "OneOf", "Assert",
+    "NotNull", "Range", "Email", "Pattern", "Password", "Min", "Max", "OneOf", "Assert", "Required",
     # Middlewares
     "Logger", "Limiter", "CORS", "BodyLimiter", "Guard", "GuardStrategy",
     "BearerStrategy", "BasicStrategy", "ApiKeyStrategy", "AnyStrategy", "AllStrategy",
