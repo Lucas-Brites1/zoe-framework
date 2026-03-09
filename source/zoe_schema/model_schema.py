@@ -13,7 +13,7 @@ class Model:
         setattr(self, field, None)
         continue
       setattr(self, field, kwargs[field])
-    
+
   def __getattr__(self: "Model", name: str) -> Any:
     raise AttributeError(f"'{type(self).__name__}' has no field '{name}'")
 
@@ -54,6 +54,6 @@ def Strict(cls: Type[Model]) -> Type[Model]:
       ))
     )
 
-  cls._Model__strict__ = True
+  cls._Model__strict__ = True # type: ignore
   return cls
 
