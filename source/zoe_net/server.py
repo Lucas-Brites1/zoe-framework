@@ -128,10 +128,10 @@ class Server:
                         response = InternalServerException(detail=str(exc)).to_response()
 
                     if keep_alive:
-                        response.add_header("Connection", "keep-alive")
-                        response.add_header("Keep-Alive", f"timeout={self._keep_alive_timeout}")
+                        response.headers.add("Connection", "keep-alive")
+                        response.headers.add("Keep-Alive", f"timeout={self._keep_alive_timeout}")
                     else:
-                        response.add_header("Connection", "close")
+                        response.headers.add("Connection", "close")
 
                     try:
                         conn.socket_connection.sendall(response._build())
