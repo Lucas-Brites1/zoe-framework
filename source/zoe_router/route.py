@@ -2,12 +2,14 @@ from zoe_http.method import HttpMethod
 from zoe_http.handler import Handler
 
 class Route:
-    def __init__(self: "Route", endpoint: str, method: HttpMethod, handler: Handler) -> None:
-        if endpoint == "":
-            endpoint = "/"
-        self.__endpoint = endpoint
-        self.__method = method
-        self.__handler = handler
+    def __init__(self, endpoint: str, method: HttpMethod, handler: Handler) -> None:
+      if not endpoint.startswith("/"):
+          endpoint = f"/{endpoint}"
+      if len(endpoint) > 1 and endpoint.endswith("/"):
+          endpoint = endpoint[:-1]
+      self.__endpoint = endpoint
+      self.__method = method
+      self.__handler = handler
 
     @staticmethod
     def post(endpoint: str, handler: Handler) -> "Route":

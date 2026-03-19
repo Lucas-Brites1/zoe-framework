@@ -17,8 +17,11 @@ import re
 
 class Router:
     def __init__(self, prefix: str) -> None:
-        self.__assigned_routes: Routes = Routes()
+        if not prefix.startswith("/"):
+            prefix = f"/{prefix}"
+
         self.__prefix = prefix
+        self.__assigned_routes: Routes = Routes()
         self.__router_middlewares: list[Middleware] = []
         self.__already_reordered: bool = False
         self.__compiled_routes: dict[str, tuple[re.Pattern, list[str]]] = {}
@@ -61,7 +64,7 @@ class Router:
         endpoint_exists: bool = False
 
         for route in self.__assigned_routes:
-            full_path_normalized: str = self.__normalize_trailing_slash(full_path=self.__prefix + route.endpoint)
+            full_path_normalized: str = self.__normalize_path(path=self.__prefix + route.endpoint)
 
             if "*" in full_path_normalized:
                 result = self.__handle_wildcard_route(
@@ -101,16 +104,19 @@ class Router:
             self.__assigned_routes.prioritize_static_routes()
             self.__already_reordered = True
 
-    def __normalize_trailing_slash(self, full_path: str) -> str:
-        if len(full_path) > 1 and full_path.endswith("/"):
-            return full_path[:-1]
-        return full_path
+    def __normalize_path(self, path: str) -> str:
+      if not path.startswith("/"):
+          path = f"/{path}"
+      if len(path) > 1 and path.endswith("/"):
+          path = path[:-1]
+      path = path.replace("//", "/")
+      return path
 
     def resolve(self, method: HttpMethod, request: Request) -> Response | None:
         self.__prioritize_static_routes()
 
         endpoint: str = request.route
-        handler, params, method_not_allowed = self.__match_route(method=method, endpoint=self.__normalize_trailing_slash(full_path=endpoint))
+        handler, params, method_not_allowed = self.__match_route(method=method, endpoint=self.__normalize_path(path=endpoint))
 
         if handler is None:
             if method_not_allowed:
