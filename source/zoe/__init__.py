@@ -14,6 +14,8 @@ from zoe_di.singleton import Singleton
 from zoe_di.transient import Transient
 from zoe_di.scoped import Scoped
 
+# HTTP-Utils
+from zoe_http._response_util.response_cookies import SameSitePolicy, CookieAttributes, CookiePair
 # HTTP
 from zoe_http.request import Request
 from zoe_http.response import Response
@@ -38,7 +40,7 @@ from zoe_router.route import Route
 from zoe_router.routes import Routes
 
 # Schema
-from zoe_schema.model_schema import Model
+from zoe_schema.model_schema import Model, Strict
 from zoe_schema.field_schema import Field
 
 # Validators
@@ -83,12 +85,14 @@ __all__ = [  # type: ignore
     "App", "Server",
     # HTTP
     "Request", "Response", "HttpCode", "Handler", "Middleware", "HttpMethod",
+    # HTTP-UTILS
+    "SameSitePolicy", "CookieAttributes", "CookiePair",
     # Upload
     "UploadFile", "Multipart", "Auth",
     # Router
     "Router", "Route", "Routes",
     # Schema
-    "Model", "Field",
+    "Model", "Field", "Strict"
     # Dependency Injection
     "Container", "Box", "Singleton", "Transient", "Scoped",
     # Validators
