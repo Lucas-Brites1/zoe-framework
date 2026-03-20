@@ -1,31 +1,25 @@
 from typing import Any
 
 from zoe_http.code import HttpCode
-from datetime import datetime, timezone
-import uuid
+from zoe_http._response_util.response_header import ResponseHeader
 
 class Response:
-    def __init__(self, http_code: HttpCode, headers: dict[str,Any ] | None = None) -> None:
+    def __init__(self, http_code: HttpCode, headers: dict[str, Any] | None = None) -> None:
         self.__http_version: str = "HTTP/1.1"
         self.__status_code = http_code
-        self.__headers: dict[str, str] = {
-          "Date": datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT"),
-          "X-Powered-By": "Zoe",
-          "X-Request-ID": f"{uuid.uuid4()}",
-          **(dict(headers) if headers else {})
-        }
+        self.__response_header: ResponseHeader = ResponseHeader(headers=headers)
 
     @property
     def status_code(self) -> HttpCode:
         return self.__status_code
 
-    def add_header(self, key: str, value: str) -> "Response":
-        self.__headers[key] = value
-        return self
+    @property
+    def headers(self) -> ResponseHeader:
+        return self.__response_header
 
     def _build(self) -> bytes:
         response_message = self._status_line()
-        response_message = self._apply_headers_to_response(response_str=response_message)
+        response_message = self.__response_header._build(to_append=response_message)
         return response_message.encode("utf-8")
 
     def _status_line(self) -> str:
@@ -37,11 +31,6 @@ class Response:
         content_line += f"Content-Type: {content_type}\r\n"
         content_line += f"Content-Length: {len(encoded)}\r\n"
         return content_line
-
-    def _apply_headers_to_response(self, response_str: str) -> str:
-        for header_name, header_value in self.__headers.items():
-          response_str += f"{header_name}: {header_value}\r\n"
-        return response_str + "\r\n"
 
     @classmethod
     def json(cls,

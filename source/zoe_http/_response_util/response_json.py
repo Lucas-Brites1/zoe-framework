@@ -20,7 +20,7 @@ class Json(Response):
       body_json_str = json.dumps(body_data)
 
       response_message += self._content_line(content_type=self._content_type,body=body_json_str)
-      response_message = self._apply_headers_to_response(response_str=response_message)
+      response_message = self.headers._build(to_append=response_message)
 
       if body_data is not None:
           response_message += body_json_str  # type: ignore

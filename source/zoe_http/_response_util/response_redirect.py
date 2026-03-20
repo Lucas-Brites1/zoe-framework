@@ -12,7 +12,7 @@ class Redirect(Response):
     response_message = self._status_line()
     response_message += f"Location: {self._redirect_to}\r\n"
     response_message += "Content-Length: 0\r\n"
-    response_message = self._apply_headers_to_response(response_message)
+    response_message = self.headers._build(to_append=response_message)
     response_message += "\r\n"
 
     return response_message.encode("utf-8")

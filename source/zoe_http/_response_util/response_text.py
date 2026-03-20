@@ -15,7 +15,7 @@ class PlainText(Response):
     response_message = self._status_line()
 
     response_message += self._content_line(content_type=self._content_type,body=self._body)
-    response_message = self._apply_headers_to_response(response_str=response_message)
+    response_message = self.headers._build(to_append=response_message)
     try:
       response_message += str(self._body)
     except Exception as exc:

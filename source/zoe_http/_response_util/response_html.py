@@ -16,7 +16,7 @@ class Html(Response):
       content_type=f"{self._content_type}; charset={self._charset}",
       body=self._body
     )
-    response_message = self._apply_headers_to_response(response_str=response_message)
+    response_message = self.headers._build(to_append=response_message)
     response_message += self._body
 
     return response_message.encode(self._charset)
