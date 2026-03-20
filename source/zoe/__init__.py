@@ -23,6 +23,7 @@ from zoe_http.response import Response
 from zoe_http.code import HttpCode
 from zoe_http.handler import Handler
 from zoe_http.middleware import Middleware
+from zoe_http.middleware_async import AsyncMiddleware
 from zoe_http.method import HttpMethod
 from zoe_http.bytes import Bytes
 
@@ -85,7 +86,7 @@ __all__ = [  # type: ignore
     # Core
     "App", "Server",
     # HTTP
-    "Request", "Response", "HttpCode", "Handler", "Middleware", "HttpMethod",
+    "Request", "Response", "HttpCode", "Handler", "Middleware", "AsyncMiddleware" "HttpMethod",
     # HTTP-UTILS
     "SameSitePolicy", "CookieAttributes", "CookiePair", "Filter",
     # Upload
