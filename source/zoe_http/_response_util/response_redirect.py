@@ -10,9 +10,10 @@ class Redirect(Response):
 
   def _build(self) -> bytes:
     response_message = self._status_line()
-    response_message += f"Location: {self._redirect_to}\r\n"
-    response_message += "Content-Length: 0\r\n"
+
+    self.headers.add("Location", self._redirect_to)
+    self.headers.add("Content-Length", "0")
+    
     response_message = self.headers._build(to_append=response_message)
-    response_message += "\r\n"
 
     return response_message.encode("utf-8")
