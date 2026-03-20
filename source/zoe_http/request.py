@@ -1,6 +1,4 @@
-from typing import Any
 from urllib.parse import unquote
-
 from zoe_http.method import HttpMethod
 from zoe_http._request_util.query_params import QueryParams
 from zoe_http._request_util.path_params import PathParams
@@ -8,6 +6,7 @@ from zoe_http._request_util.form_params import FormParams
 from zoe_http._request_util.request_body import Body
 from zoe_http._request_util.request_multipart import Multipart
 from zoe_http._request_util.request_auth import Auth
+from zoe_http._request_util.request_headers import RequestHeader
 from zoe_exceptions.http_exceptions.exc_malformed_request import MalformedRequestException
 
 class Request:
@@ -20,12 +19,7 @@ class Request:
         self.__route: str
         self.__http_version: str
 
-        self.__content_type: str = ""
-        self.__content_length: int = 0
-        self.__host: str = ""
-        self.__headers: dict[str, str] = {}
-        self.__accept: str = ""
-        self.__connection: str = ""
+        self.__header: RequestHeader = RequestHeader()
 
         self.__form_params = FormParams()
         self.__query_params = QueryParams()
@@ -35,19 +29,20 @@ class Request:
 
         self.__parse()
 
-        if "multipart/form-data" in self.__content_type:
-          self.__multipart = Multipart.from_request(
-              content_type=self.__content_type,
-              body_bytes=self.__body_bytes
-          )
-        else:
-          self.__body: Body = Body.from_request(
-              content_type=self.__content_type,
-              body_bytes=self.__body_bytes
-          )
+        if self.__header.content_type is not None:
+          if "multipart/form-data" in self.__header.content_type:
+            self.__multipart = Multipart.from_request(
+                content_type=self.__header.content_type,
+                body_bytes=self.__body_bytes
+            )
+          else:
+            self.__body: Body = Body.from_request(
+                content_type=self.__header.content_type,
+                body_bytes=self.__body_bytes
+            )
 
         self.__auth: Auth = Auth(
-            authorization_header=self.headers.get("Authorization", None)
+            authorization_header=self.headers.authorization
         )
 
     @property
@@ -67,20 +62,8 @@ class Request:
         return self.__route
 
     @property
-    def headers(self: "Request") -> dict[str, Any]:
-        return self.__headers
-
-    @property
-    def content_type(self: "Request") -> str:
-        return self.__content_type
-
-    @property
-    def content_length(self: "Request") -> int:
-        return self.__content_length
-
-    @property
-    def host(self: "Request") -> str:
-        return self.__host
+    def headers(self: "Request") -> "RequestHeader":
+        return self.__header
 
     @property
     def http_version(self: "Request") -> str:
@@ -136,28 +119,6 @@ class Request:
         self.__http_version = http_version
         return self
 
-    def __parse_headers(self, header_raw_part: list[str]) -> "Request":
-        self.__headers = {}
-        for header in header_raw_part:
-            key, _, value = header.partition(": ")
-            match key:
-                case "Content-Length":
-                    try:
-                        self.__content_length = int(value)
-                    except ValueError:
-                        raise MalformedRequestException(f"Content-Length '{value}' is not a valid integer.")
-                case "Host":
-                    self.__host = value
-                case "Content-Type":
-                    self.__content_type = value
-                case "Accept":
-                    self.__accept = value
-                case "Connection":
-                    self.__connection = value
-                case _:
-                    self.__headers[key] = value
-        return self
-
     def __parse(self: "Request") -> None:
         decoded_headers: str = self.__header_bytes.decode(
             encoding="utf-8",
@@ -166,4 +127,4 @@ class Request:
         lines = decoded_headers.split("\r\n")
 
         self.__parse_request_line(lines[0])
-        self.__parse_headers(lines[1:])
+        self.__header._parse(lines[1:])
