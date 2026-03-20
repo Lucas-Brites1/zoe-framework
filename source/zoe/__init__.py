@@ -16,6 +16,7 @@ from zoe_di.scoped import Scoped
 
 # HTTP-Utils
 from zoe_http._response_util.response_cookies import SameSitePolicy, CookieAttributes, CookiePair
+from zoe_http._response_util._pagination import Filter
 # HTTP
 from zoe_http.request import Request
 from zoe_http.response import Response
@@ -86,7 +87,7 @@ __all__ = [  # type: ignore
     # HTTP
     "Request", "Response", "HttpCode", "Handler", "Middleware", "HttpMethod",
     # HTTP-UTILS
-    "SameSitePolicy", "CookieAttributes", "CookiePair",
+    "SameSitePolicy", "CookieAttributes", "CookiePair", "Filter",
     # Upload
     "UploadFile", "Multipart", "Auth",
     # Router
