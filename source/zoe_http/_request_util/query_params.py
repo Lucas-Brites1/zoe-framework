@@ -28,5 +28,5 @@ class QueryParams:
                 if type_ != str:
                     return self.__cast(value=value[0], t_cast=type_, default_return=default)
                 return value[0]
-        return None
+        return default
 
