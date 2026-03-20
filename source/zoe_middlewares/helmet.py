@@ -43,14 +43,14 @@ class Helmet:
     for header_name, header_value in self.__DEFAULT_HEADERS.items():
       if header_name == "Strict-Transport-Security" and not self.__hsts:
         continue
-      response.add_header(header_name, header_value)
+      response.headers.add(header_name, header_value)
 
     if self.permissions_policy:
       value = ", ".join([p.value for p in self.permissions_policy])
-      response.add_header("Permissions-Policy", value)
+      response.headers.add("Permissions-Policy", value)
 
     if self.cross_origin_embedder_policy:
-      response.add_header("Cross-Origin-Embedder-Policy", self.cross_origin_embedder_policy.value)
+      response.headers.add("Cross-Origin-Embedder-Policy", self.cross_origin_embedder_policy.value)
 
     return response
 
