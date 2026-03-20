@@ -1,7 +1,11 @@
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from zoe_http.code import HttpCode
 from zoe_http._response_util.response_header import ResponseHeader
+
+if TYPE_CHECKING:
+    from zoe_http._response_util._pagination import Filter
+    from zoe_http.request import Request
 
 class Response:
     def __init__(self, http_code: HttpCode, headers: dict[str, Any] | None = None) -> None:
@@ -48,8 +52,8 @@ class Response:
              charset: str = "utf-8",
              headers: dict[str, Any] | None = None
             ) -> "PlainText": # type: ignore
-      from zoe_http._response_util.response_text import PlainText
-      return PlainText(http_code=http_code, text=body, charset=charset, headers=headers)
+        from zoe_http._response_util.response_text import PlainText
+        return PlainText(http_code=http_code, text=body, charset=charset, headers=headers)
 
     @classmethod
     def html(cls,
@@ -78,5 +82,31 @@ class Response:
              force_download: bool = False,
              headers: dict[str, Any] | None = None
             ) -> "File": # type: ignore
-      from zoe_http._response_util.response_file import File
-      return File(filename=filename, directory=directory, force_download=force_download, headers=headers, http_code=http_code)
+        from zoe_http._response_util.response_file import File
+        return File(filename=filename, directory=directory, force_download=force_download, headers=headers, http_code=http_code)
+
+    @classmethod
+    def paginated(cls,
+                  items: list[Any],
+                  request: "Request",
+                  per_page: int | None = None,
+                  filters: list["Filter"] | None = None,
+                  headers: dict[str, Any] | None = None,
+                  http_code: HttpCode = HttpCode.OK
+        ) -> "Paginated": # type: ignore
+        from zoe_http._response_util.response_paginated import Paginated, Pagination
+
+        pagination = Pagination(
+        items=items,
+        request=request,
+        total=len(items),
+        perpage=per_page, 
+        filters=filters
+        )
+
+        return Paginated(
+            items=items, 
+            headers=headers, 
+            http_code=http_code,
+            pagination=pagination
+            )
