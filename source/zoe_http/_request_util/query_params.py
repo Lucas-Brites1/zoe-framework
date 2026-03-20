@@ -1,4 +1,7 @@
-from typing import Any
+from typing import Any, Callable, TypeVar, Type, overload
+
+T = TypeVar("T")
+D = TypeVar("D")
 
 class QueryParams:
     def __init__(self):
@@ -11,22 +14,28 @@ class QueryParams:
 
       self.__qparams[key] = [value]
 
-    def __cast(self, value: str, t_cast: type, default_return: Any) -> Any:
-      try:
-         return t_cast(value)
-      except (ValueError, TypeError):
-         return default_return
+    @overload
+    def get(self, key: str, type_: Callable[[str], T], default: D) -> T | D: ...
 
-    def get(self, key: str, type_: type = str, default: Any = None) -> list | Any | None:
-        if key in self.__qparams:
-            value: list[Any] | Any = self.__qparams[key]
-            if len(value) > 1:
-                if type_ != str:
-                  return [self.__cast(v, type_, default) for v in value]
-                return value
-            else:
-                if type_ != str:
-                    return self.__cast(value=value[0], t_cast=type_, default_return=default)
-                return value[0]
-        return default
+    @overload
+    def get(self, key: str, type_: Callable[[str], T], default: None = None) -> T | None: ...
 
+    @overload
+    def get(self, key: str, type_: None = None,  default: None = None) -> str | None: ...
+
+    def get(self, key: str, type_: Callable[[str], T] | None = None, default: D | None = None) -> T | D | str | list | None:
+      if key not in self.__qparams:
+          return default
+
+      values = self.__qparams[key]
+
+      if type_ is not None:
+          casted = []
+          for v in values:
+              try:
+                  casted.append(type_(v))
+              except (ValueError, TypeError):
+                  casted.append(default)
+          return casted if len(casted) > 1 else casted[0]
+
+      return values if len(values) > 1 else values[0]
