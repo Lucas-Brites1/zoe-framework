@@ -52,7 +52,7 @@ class CORS:
             "Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"
         ]
 
-    def __create_response_with_allow_headers(self, origin: str) -> Response:
+    def __create_response_with_allow_headers(self, origin: str | None) -> Response:
         allow_prefix: str = "Access-Control-Allow"
         response: Response =  Response(
             http_code=HttpCode.OK,
@@ -66,7 +66,7 @@ class CORS:
         return response
 
     def process(self, request: Request, next: Callable) -> Response:
-        origin: str = request.headers.get("Origin", "")
+        origin: str | None = request.headers.get(key="Origin", default="")
         who_is_allowed: str = "*" in self.__allowed_origins or origin in self.__allowed_origins # type: ignore
 
         if request.method == HttpMethod.OPTIONS:

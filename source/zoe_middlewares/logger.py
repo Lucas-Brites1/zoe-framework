@@ -122,11 +122,11 @@ class Logger:
         self.__big_payload_warn = False
         return self
 
-    def process(self, request: Request, next: Callable) -> Response:
+    async def process(self, request: Request, next: Callable) -> Response:
         start = time.perf_counter()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        response: Response = next(request)
+        response: Response = await next(request)
 
         elapsed_ms = (time.perf_counter() - start) * 1000
 
@@ -141,16 +141,16 @@ class Logger:
 
         if self.__verbose:
             if request.body:
-                if request.content_length:
-                    if request.content_length > self.__big_payload_threshold.value:
+                if request.headers.content_length:
+                    if request.headers.content_length > self.__big_payload_threshold.value:
                         if self.__big_payload_warn:
-                            print(f"{_Color.GREY}body: {_Color.RED}[payload too large to display — {_Color.BOLD}{request.content_length / 1024:.1f}KB]{_Color.RESET}")
+                            print(f"{_Color.GREY}body: {_Color.RED}[payload too large to display — {_Color.BOLD}{request.headers.content_length / 1024:.1f}KB]{_Color.RESET}")
                             print(f"    > {_Color.GREY}hint: {_Color.GREEN}call Logger().disable_big_payload_warning() to suppress this message")
                     else:
                         print(f"  {_Color.GREY}body:    {request.body.data}{_Color.RESET}")
                 else:
                     print(f"{_Color.GREY}body: {_Color.YELLOW}[missing Content-Length header — skipping body log]{_Color.RESET}")
 
-            print(f"  {_Color.GREY}headers: {dict(request.headers)}{_Color.RESET}")
+            print(f"  {_Color.GREY}headers: {request.headers.values}{_Color.RESET}")
 
         return response
