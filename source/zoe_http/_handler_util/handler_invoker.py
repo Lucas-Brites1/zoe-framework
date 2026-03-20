@@ -11,6 +11,7 @@ from zoe_exceptions.exc_handler_abort import HandlerAbortException
 from zoe_di.container import Container, Box
 from zoe_di.inspector import Inspector
 import typing
+from typing import cast, Coroutine, Any
 import inspect
 
 class HandlerInvoker:
@@ -41,7 +42,7 @@ class HandlerInvoker:
                             "parameter": param_name,
                             "details": [
                                 f"Expected: JSON object matching {param_name}",
-                                f"Received: {request.headers.get('Content-Type', 'no Content-Type header')}",
+                                f"Received: {request.headers.get('Content-Type', default='no Content-Type header')}",
                                 f"The handler expects a JSON body to deserialize into '{param_name}'.",
                                 "Make sure your request includes:",
                                 "  - Header: Content-Type: application/json",
@@ -87,7 +88,7 @@ class HandlerInvoker:
     return kwargs
 
   @staticmethod
-  def invoke(handler: Handler, request: Request) -> Response:
+  async def invoke(handler: Handler, request: Request) -> Response:
     hints: dict = HandlerInvoker.get_hints(handler=handler)
 
     request_param_name = "request"
@@ -105,7 +106,13 @@ class HandlerInvoker:
         except ZoeNonHttpError as e:
             raise e
 
-        result = handler.handle(**{request_param_name: request}, **kwargs)
+        is_courotine: bool = inspect.iscoroutinefunction(handler.handle)
+
+        if is_courotine:
+          result = await cast(Coroutine[Any, Any, Response], handler.handle(**{request_param_name: request}, **kwargs))
+        else:
+          result = handler.handle(**{request_param_name: request}, **kwargs)
+
         if result is None:
             handler_name: str = handler.__class__.__name__
             raise ZoeNonHttpError(
