@@ -4,7 +4,7 @@ from zoe_di.inspector import Inspector, ObjectKind
 from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from zoe_exceptions.exc_non_http_aggregate import ZoeNonHttpAggregate
 from typing import Any, TypeAlias
-import threading
+from contextvars import ContextVar
 import uuid
 
 Keyref: TypeAlias = str | type | Any
@@ -13,7 +13,7 @@ class Container:
     __registry: dict[str, Box] = {}
     __singleton_instances: dict[str, Any] = {}
     __scoped_instances: dict[str, dict[str, Any]] = {}
-    __local = threading.local()
+    __scope: ContextVar[str | None] = ContextVar("scope", default=None)
 
     @classmethod
     def provide(cls, box: Box) -> None:
@@ -129,7 +129,6 @@ class Container:
 
     @classmethod
     def __resolve_dependency(cls, box: Box, key: str) -> Any:
-        errors: list[ZoeNonHttpError] = []
         scope_id: Any | None = None
 
         match box.lifecycle:
@@ -140,7 +139,7 @@ class Container:
                 if cached is not None:
                     return cached
             case Lifecycle.SCOPED:
-              scope_id = getattr(cls.__local, 'scope_id', None)
+              scope_id = cls.__scope.get()
               if scope_id is None:
                   raise ZoeNonHttpError(
                       why="Scoped dependency resolved outside of a request scope",
@@ -185,16 +184,16 @@ class Container:
     @classmethod
     def _open_scope(cls) -> str:
         scope_id = str(uuid.uuid4())
-        cls.__local.scope_id = scope_id
+        cls.__scope.set(scope_id)
         cls.__scoped_instances[scope_id] = {}
         return scope_id
 
     @classmethod
     def _close_scope(cls):
-      scope_id = getattr(cls.__local, 'scope_id', None)
+      scope_id = cls.__scope.get()
       if scope_id and scope_id in cls.__scoped_instances:
           del cls.__scoped_instances[scope_id]
-      cls.__local.scope_id = None
+      cls.__scope.set(None)
 
     @classmethod
     def __normalize_box_key(cls, box: Box) -> str:
