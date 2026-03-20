@@ -86,18 +86,20 @@ class Router:
 
         return None, {}, endpoint_exists
 
-    def __exec_middlewares(self, request: Request, handler: Handler, params: dict) -> Response:
-        def final(req: Request) -> Response:
-            return HandlerInvoker.invoke(handler=handler, request=req)
+    async def __exec_middlewares(self, request: Request, handler: Handler, params: dict) -> Response:
+      async def final(req: Request) -> Response:
+          return await HandlerInvoker.invoke(handler=handler, request=req)
 
-        pipeline = final
-        for middleware in reversed(self.__router_middlewares):
-            current = pipeline
-            def make_next(m, n):
-                return lambda req: m.process(req, n)
-            pipeline = make_next(middleware, current)
+      pipeline = final
+      for middleware in reversed(self.__router_middlewares):
+          current = pipeline
+          def make_next(m, n):
+              async def next_fn(req):   # ← async aqui dentro
+                  return await m.process(req, n)
+              return next_fn
+          pipeline = make_next(middleware, current)
 
-        return pipeline(request)
+      return await pipeline(request)
 
     def __prioritize_static_routes(self) -> None:
         if not self.__already_reordered:
@@ -112,7 +114,7 @@ class Router:
       path = path.replace("//", "/")
       return path
 
-    def resolve(self, method: HttpMethod, request: Request) -> Response | None:
+    async def resolve(self, method: HttpMethod, request: Request) -> Response | None:
         self.__prioritize_static_routes()
 
         endpoint: str = request.route
@@ -129,9 +131,9 @@ class Router:
         request.set_path_params(params)
 
         if not self.__router_middlewares:
-            return HandlerInvoker.invoke(handler=handler, request=request)
+            return await HandlerInvoker.invoke(handler=handler, request=request)
 
-        return self.__exec_middlewares(request=request, handler=handler, params=params)
+        return await self.__exec_middlewares(request=request, handler=handler, params=params)
 
     @overload
     def post(self, endpoint: str, handler: Handler) -> "Router": ...

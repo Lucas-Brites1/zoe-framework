@@ -8,6 +8,7 @@ from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from zoe_exceptions.exc_internal_exc import InternalServerException
 from zoe_exceptions.http_exceptions.exc_not_found import RouteNotFoundException
 from typing import Callable
+import inspect
 
 class App:
     def __init__(self: "App") -> None:
@@ -48,14 +49,12 @@ class App:
             self.__routers.append(to_add)
         elif isinstance(to_add, Middleware):
             self.__middlewares.append(to_add)
-        else:
-            raise TypeError(f"Cannot register type '{type(to_add).__name__}'")
         return self
 
-    def _resolve(self, request: Request) -> Response:
-        def call_handler(req: Request) -> Response:
+    async def _resolve(self, request: Request) -> Response:
+        async def call_handler(req: Request) -> Response:
             for router in self.__routers:
-                response = router.resolve(method=req.method, request=request)
+                response = await router.resolve(method=req.method, request=request)
                 if response is not None:
                     return response
             return RouteNotFoundException(request=request).to_response()
@@ -63,11 +62,13 @@ class App:
         chain = call_handler # type: ignore
         for middleware in reversed(self.__middlewares):
             previous = chain
-            def chain(req, m=middleware, p=previous):
+            async def chain(req, m=middleware, p=previous):
+                if inspect.iscoroutinefunction(m.process):
+                  return await m.process(req, p)
                 return m.process(req, p)
 
         try:
-            return chain(request)
+            return await chain(request) # type: ignore
         except ZoeNonHttpError as non_http_exc:
             return InternalServerException.from_non_http_error(
                 error=non_http_exc,
