@@ -16,7 +16,7 @@ class StaticFiles:
 
     return route.strip().startswith(self._prefix)
 
-  def process(self, request: Request, next: Callable) -> Response:
+  async def process(self, request: Request, next: Callable) -> Response:
     if self._is_the_same_prefix(route=request.route):
         filename = request.route.removeprefix(self._prefix).lstrip("/")
 
@@ -29,5 +29,5 @@ class StaticFiles:
 
         return Response.file(filename=filename, directory=self._dir)
 
-    return next(request)
+    return await next(request)
 

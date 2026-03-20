@@ -54,6 +54,6 @@ class Helmet:
 
     return response
 
-  def process(self: "Helmet", request: Request, next: Callable) -> Response:
-    response = next(request)
+  async def process(self: "Helmet", request: Request, next: Callable) -> Response:
+    response = await next(request)
     return self.__insert_headers(response=response)

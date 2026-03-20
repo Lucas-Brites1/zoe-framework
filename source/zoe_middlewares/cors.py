@@ -65,7 +65,7 @@ class CORS:
         )
         return response
 
-    def process(self, request: Request, next: Callable) -> Response:
+    async def process(self, request: Request, next: Callable) -> Response:
         origin: str | None = request.headers.get(key="Origin", default="")
         who_is_allowed: str = "*" in self.__allowed_origins or origin in self.__allowed_origins # type: ignore
 
@@ -74,7 +74,7 @@ class CORS:
                 return self.__create_response_with_allow_headers(origin=origin)
             return Response(http_code=HttpCode.OK)
 
-        response = next(request)
+        response = await next(request)
         if who_is_allowed:
             response.add_header(key="Access-Control-Allow-Origin", value=origin or "*")
         return response

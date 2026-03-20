@@ -41,11 +41,11 @@ class BodyLimiter:
         """
         self.__max_size: Bytes = max_size
 
-    def process(self: "BodyLimiter", request: Request, next: Callable) -> Response:
+    async def process(self: "BodyLimiter", request: Request, next: Callable) -> Response:
         content_len: int | None = request.headers.content_length
         if content_len is not None and content_len > self.__max_size.value:
             return ZoeHttpException(
                 message=f"Payload too large. Maximum allowed size is {self.__max_size.value} bytes",
                 status_code=HttpCode.PAYLOAD_TOO_LARGE
             ).to_response()
-        return next(request)
+        return await next(request)

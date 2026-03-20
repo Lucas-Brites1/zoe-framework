@@ -53,10 +53,10 @@ class Guard:
         self.__strategy: GuardStrategy = strategy
         self.__message = unauthorized_message
 
-    def process(self: "Guard", request: Request, next: Callable) -> Response:
+    async def process(self: "Guard", request: Request, next: Callable) -> Response:
       if not self.__strategy.guard(request):
             return ZoeHttpException(
                 message=self.__message,
                 status_code=HttpCode.UNAUTHORIZED
             ).to_response()
-      return next(request)
+      return await next(request)
