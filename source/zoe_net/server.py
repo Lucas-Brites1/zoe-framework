@@ -128,7 +128,10 @@ class Server:
           await writer.wait_closed()
 
     def run(self) -> None:
-      asyncio.run(self._start())
+      try:
+          asyncio.run(self._start())
+      except KeyboardInterrupt:
+          pass
 
     async def _start(self) -> None:
       self.__running = True
@@ -143,7 +146,7 @@ class Server:
             _ServerUtil.print_server_listening(host=self.__host, port=self.__port)
             self.__app._run_all_startup_callables()
             await server.serve_forever()
-          except KeyboardInterrupt:
+          except (KeyboardInterrupt, asyncio.CancelledError):
             pass
           finally:
             self.__running = False
