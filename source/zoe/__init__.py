@@ -26,6 +26,7 @@ from zoe_http.middleware import Middleware
 from zoe_http.middleware_async import AsyncMiddleware
 from zoe_http.method import HttpMethod
 from zoe_http.bytes import Bytes
+from zoe_http.hooks import Hook
 
 # File Utils
 from zoe_http._file_util import FileUtil, ROOT
@@ -86,7 +87,7 @@ __all__ = [  # type: ignore
     # Core
     "App", "Server",
     # HTTP
-    "Request", "Response", "HttpCode", "Handler", "Middleware", "AsyncMiddleware" "HttpMethod",
+    "Request", "Response", "HttpCode", "Handler", "Middleware", "AsyncMiddleware" "HttpMethod", "Hook",
     # HTTP-UTILS
     "SameSitePolicy", "CookieAttributes", "CookiePair", "Filter",
     # Upload
