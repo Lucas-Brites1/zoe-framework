@@ -1,8 +1,9 @@
 from zoe_exceptions.schemas_exceptions.exc_validator import SchemaValidatorException
 from zoe_exceptions.schemas_exceptions.exc_base import ErrorCode
+from zoe_schema.field_schema_validator import FieldValidator
 from typing import Any
 
-class Password:
+class Password(FieldValidator):
   def __init__(
       self: "Password",
       min_length: int = 8,

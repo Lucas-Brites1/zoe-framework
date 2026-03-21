@@ -1,9 +1,10 @@
 from zoe_exceptions.schemas_exceptions.exc_validator import SchemaValidatorException
 from zoe_exceptions.schemas_exceptions.exc_base import ErrorCode
+from zoe_schema.field_schema_validator import FieldValidator
 import builtins
 from typing import Any
 
-class Min:
+class Min(FieldValidator):
     def __init__(self: "Min", min_: int) -> None:
         self.min = min_
 

@@ -1,10 +1,11 @@
 from zoe_exceptions.schemas_exceptions.exc_validator import SchemaValidatorException
 from zoe_exceptions.schemas_exceptions.exc_base import ErrorCode
 from zoe_application.zoe_metadata import ZoeMetadata
+from zoe_schema.field_schema_validator import FieldValidator
 from typing import Any
 
 
-class Assert:
+class Assert(FieldValidator):
   def __init__(self: "Assert", expected_value: str):
     self.expected_value = expected_value
 

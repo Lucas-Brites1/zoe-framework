@@ -1,18 +1,20 @@
 from zoe_exceptions.schemas_exceptions.exc_validator import SchemaValidatorException
 from zoe_exceptions.schemas_exceptions.exc_base import ErrorCode
 from zoe_application.zoe_metadata import ZoeMetadata
+from zoe_schema.field_schema_validator import FieldValidator
+from typing import Any
 
-class OneOf:
+class OneOf(FieldValidator):
     def __init__(self: "OneOf", *options):
         self.options = options
 
-    def validate(self: "OneOf", value: any, field_name: str) -> None:
+    def validate(self: "OneOf", value: Any, field_name: str) -> None:
         details: dict = {
             "received": value
         }
         if ZoeMetadata.is_debug():
             details["allowed"] = self.options
-        
+
         exc: SchemaValidatorException = SchemaValidatorException(
                 field_name=field_name,
                 message=f"'{field_name}' must be one of the allowed values.",

@@ -1,6 +1,7 @@
-from typing import Protocol, Any
+from typing import Any
+from abc import ABC, abstractmethod
 
-class FieldValidator(Protocol):
+class FieldValidator(ABC):
     """
     Protocol (interface) that all field validators must implement.
     ---
@@ -38,5 +39,5 @@ class FieldValidator(Protocol):
             count: int = Field(EvenNumber())
     ```
     """
-    def validate(self, value: Any, field_name: str) -> None:
-        raise NotImplementedError("Validator must implement validate()")
+    @abstractmethod
+    def validate(self, value: Any, field_name: str) -> None: ...

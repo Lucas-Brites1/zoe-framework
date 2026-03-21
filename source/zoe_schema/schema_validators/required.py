@@ -1,8 +1,9 @@
 from zoe_exceptions.schemas_exceptions.exc_validator import SchemaValidatorException
 from zoe_exceptions.schemas_exceptions.exc_base import ErrorCode
+from zoe_schema.field_schema_validator import FieldValidator
 from typing import Any
 
-class Required:
+class Required(FieldValidator):
     def validate(self, value: Any, field_name: str) -> None:
         if value is None:
             raise SchemaValidatorException(
