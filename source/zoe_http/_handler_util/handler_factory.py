@@ -49,4 +49,9 @@ class GenericHandlerFactory:
             (Handler,),
             {'handle': handle}
         )
+
+        after_fn_hook: Callable | None = getattr(fn, "__afterfn__", None)
+        if after_fn_hook is not None:
+            handler_generated.__afterfn__ = after_fn_hook   # type: ignore
+
         return handler_generated()  # type: ignore

@@ -10,6 +10,7 @@ from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from zoe_exceptions.exc_handler_abort import HandlerAbortException
 from zoe_di.container import Container, Box
 from zoe_di.inspector import Inspector
+from zoe_http.hooks import Hook
 import typing
 from typing import cast, Coroutine, Any, Type
 import inspect
@@ -66,7 +67,7 @@ class HandlerInvoker:
             except ZoeSchemaAggregateException as Zagexc:
                 raise HandlerAbortException(Zagexc.to_response(model_name=class_reference.__name__))
         return False
-            
+
     @staticmethod
     def let_container_resolve(class_reference: Type, param_name: str, kwargs: dict) -> None:
         class_ref_name: str = class_reference.__name__
@@ -110,12 +111,23 @@ class HandlerInvoker:
             except ZoeNonHttpError as e:
                 raise e
 
-            is_coroutine: bool = inspect.iscoroutinefunction(handler.handle)
+            original: typing.Callable | None  = getattr(handler, "__original_handle__", None)
+            handle_fn: typing.Callable        = original if original is not None else handler.handle
+            is_coroutine: bool                = inspect.iscoroutinefunction(handle_fn)
 
             if is_coroutine:
-                result = await cast(Coroutine[Any, Any, Response], handler.handle(**{request_param_name: request}, **kwargs))
+                result = await cast(Coroutine[Any, Any, Response], handle_fn(**{request_param_name: request}, **kwargs))
             else:
-                result = handler.handle(**{request_param_name: request}, **kwargs)
+                result = handle_fn(**{request_param_name: request}, **kwargs)
+
+            after_hook: typing.Callable | None = type(handler).__dict__.get("__afterfn__", None)
+            if after_hook is not None:
+                if inspect.iscoroutinefunction(after_hook):
+                    await after_hook()
+                else:
+                    after_hook()
+
+                Hook.ctx._clear()
 
             if result is None:
                 handler_name: str = handler.__class__.__name__
