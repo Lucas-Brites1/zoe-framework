@@ -2,14 +2,13 @@ from zoe_http.handler import Handler
 from zoe_http.request import Request
 from zoe_http.response import Response
 from zoe_schema.model_schema import Model
-from zoe_http._response_util.response_paginated import Paginated
 from zoe_exceptions.schemas_exceptions.exc_aggregate import ZoeSchemaAggregateException
 from zoe_schema.model_engine import ModelEngine
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException, HttpCode
 from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from zoe_exceptions.exc_handler_abort import HandlerAbortException
-from zoe_di.container import Container, Box
-from zoe_di.inspector import Inspector
+from zoe_di.container import Container
+from zoe_di.inspector import ModelInspector
 from zoe_http.hooks import Hook
 import typing
 from typing import cast, Coroutine, Any, Type
@@ -41,6 +40,15 @@ class HandlerInvoker:
     @staticmethod
     def let_model_resolve(class_reference: Type, param_name: str, request: Request, kwargs: dict) -> bool:
         if isinstance(class_reference, type) and Model.is_model(class_reference):
+            if request.body.data is None or len(request.body.data) == 0:
+                if not ModelInspector._can_resolve_without_body(class_reference):
+                  raise ZoeHttpException(
+                              message=f"Request body is required but was not provided.",
+                              status_code=HttpCode.BAD_REQUEST
+                      )
+                kwargs[param_name] = ModelEngine.validate_and_create(model_class=class_reference, data={})
+                return True
+
             if not request.body.is_json():
                 raise ZoeHttpException(
                             message={
@@ -56,11 +64,6 @@ class HandlerInvoker:
                                 ]
                             }
                         )
-            if request.body.data is None or len(request.body.data) == 0:
-                raise ZoeHttpException(
-                            message=f"Request body is required but was not provided.",
-                            status_code=HttpCode.BAD_REQUEST
-                    )
             try:
                 kwargs[param_name] = ModelEngine.validate_and_create(model_class=class_reference, data=request.body.data) # type: ignore
                 return True
