@@ -128,3 +128,6 @@ class Request:
 
         self.__parse_request_line(lines[0])
         self.__header._parse(lines[1:])
+
+    def _set_normalized_route(self, route: str) -> None:
+        self.__route = route

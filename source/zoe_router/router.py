@@ -117,8 +117,10 @@ class Router:
     async def resolve(self, method: HttpMethod, request: Request) -> Response | None:
         self.__prioritize_static_routes()
 
-        endpoint: str = request.route
-        handler, params, method_not_allowed = self.__match_route(method=method, endpoint=self.__normalize_path(path=endpoint))
+        endpoint: str = self.__normalize_path(path=request.route)
+        request._set_normalized_route(endpoint)
+
+        handler, params, method_not_allowed = self.__match_route(method=method, endpoint=endpoint)
 
         if handler is None:
             if method_not_allowed:
