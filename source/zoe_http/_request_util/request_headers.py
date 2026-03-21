@@ -15,18 +15,18 @@ class RequestHeader:
 
     @property
     def host(self) -> str:
-        value = self.get("Host")
+        value = self.get("host")
         if value is None:
             raise MalformedRequestException("Missing Host header.")
         return value
 
     @property
     def content_type(self) -> str | None:
-        return self.get("Content-Type")
+        return self.get("content-Type")
 
     @property
     def content_length(self) -> int | None:
-        value = self.get("Content-Length", type_=int)
+        value = self.get("content-Length", type_=int)
         if not isinstance(value, int):
             return None
         return value
@@ -38,66 +38,66 @@ class RequestHeader:
 
     @property
     def accept(self) -> str | None:
-        return self.get("Accept")
+        return self.get("accept")
 
     @property
     def accept_encoding(self) -> str | None:
-        return self.get("Accept-Encoding")
+        return self.get("accept-encoding")
 
     @property
     def accept_language(self) -> str | None:
-        return self.get("Accept-Language")
+        return self.get("accept-language")
 
     @property
     def authorization(self) -> str | None:
-        return self.get("Authorization")
+        return self.get("authorization")
 
     @property
     def connection(self) -> str | None:
-        return self.get("Connection")
+        return self.get("connection")
 
     @property
     def user_agent(self) -> str | None:
-        return self.get("User-Agent")
+        return self.get("user-agent")
 
     @property
     def referer(self) -> str | None:
-        return self.get("Referer")
+        return self.get("referer")
 
     @property
     def origin(self) -> str | None:
-        return self.get("Origin")
+        return self.get("origin")
 
     @property
     def cache_control(self) -> str | None:
-        return self.get("Cache-Control")
+        return self.get("cache-control")
 
     @property
     def pragma(self) -> str | None:
-        return self.get("Pragma")
+        return self.get("pragma")
 
     @property
     def if_modified_since(self) -> str | None:
-        return self.get("If-Modified-Since")
+        return self.get("if-modified-since")
 
     @property
     def if_none_match(self) -> str | None:
-        return self.get("If-None-Match")
+        return self.get("if-none-match")
 
     @property
     def x_forwarded_for(self) -> str | None:
-        return self.get("X-Forwarded-For")
+        return self.get("x-forwarded-for")
 
     @property
     def x_real_ip(self) -> str | None:
-        return self.get("X-Real-IP")
+        return self.get("x-real-ip")
 
     @property
     def x_request_id(self) -> str | None:
-        return self.get("X-Request-ID")
+        return self.get("x-request-id")
 
     def get(self, key: str, type_: Callable[[str], T] | None = None, default: T | None = None) -> T | str | None:
-        value = self.__headers.get(key)
+        value = self.__headers.get(key.lower())
         if value is None:
             return default
         if type_ is not None:
@@ -115,4 +115,4 @@ class RequestHeader:
                 case "Cookie":
                     self.__cookies._parse_cookie_line(line=value)
                 case _:
-                    self.__headers[key] = value
+                    self.__headers[key.lower()] = value

@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, overload
 class Body:
   def __init__(self: "Body", data: dict | str | bytes | None = None, content_type: str = "") -> None:
     self.__data: dict | str | bytes | None = data
@@ -13,6 +13,12 @@ class Body:
   def text(self: "Body") -> str | None:
     if isinstance(self.__data, str):
       return self.__data
+    return None
+
+  @property
+  def json(self: "Body") -> dict | None:
+    if isinstance(self.data, dict) and self.is_json():
+      return self.data
     return None
 
   def is_json(self: "Body") -> bool:
