@@ -52,6 +52,13 @@ class FieldInfo:
   field_object: _Field
 
 @dataclass
+class FieldMetadata:
+  field_name: str
+  field_type: Type | None
+  field_is_optional: bool
+  field_object: _Field
+
+@dataclass
 class ModelInfo:
   model_name: str
   model_class: Type[Model]
@@ -59,6 +66,33 @@ class ModelInfo:
 
 class ModelInspector:
   #is_optional@ #_process_field_value@ #_get_fields@ # get_model_info #validate_strict_mode
+  @staticmethod
+  def _get_fields_metadata(model_ref: Type[Model]) -> dict[str, FieldMetadata]:
+    fields_meta: dict[str, FieldMetadata] = {}
+    hints: dict[str, Type] = get_type_hints(model_ref)
+    model_dict: dict[str, Any] = model_ref.__dict__
+
+    print(f"Hints: {hints}\n")
+    print(f"Model Dict: {model_dict}\n")
+
+    for attr_name, attr_type in hints.items():
+      if attr_name == "return" or attr_name.startswith("_"):
+          continue
+
+      field_obj: _Field | None = model_dict.get(attr_name, None)
+
+      if not isinstance(field_obj, _Field):
+        field_obj = _Field()
+
+      fields_meta[attr_name] = FieldMetadata(
+         field_name=attr_name,
+         field_type=attr_type,
+         field_is_optional=ModelInspector.is_optional(attr_type),
+         field_object=field_obj
+      )
+
+    return fields_meta
+
   @staticmethod
   def _get_fields(model_ref: Type[Model], data_ref: dict[str, Any]) -> dict[str, FieldInfo]:
     fields_: dict[str, FieldInfo] = {}
@@ -209,6 +243,9 @@ class ModelInspector:
               )
           )
 
+      if field.has_generator and field.generator is not None:
+         return field.generator.generate()
+
       return field.default_value if field.default_value is not None else None
 
   @staticmethod
@@ -218,6 +255,19 @@ class ModelInspector:
       model_class=model_ref,
       model_fields=ModelInspector._get_fields(model_ref=model_ref, data_ref=body_data)
     )
+
+  @staticmethod
+  def _can_resolve_without_body(model_ref: Type[Model]) -> bool:
+    fields_meta: dict[str, FieldMetadata] = ModelInspector._get_fields_metadata(model_ref=model_ref)
+
+    for field_metadata in fields_meta.values():
+        field: _Field = field_metadata.field_object
+
+        if not field.has_generator and not field_metadata.field_is_optional and field.default_value is None:
+           return False
+
+    return True
+
 
 class Inspector:
   @staticmethod
