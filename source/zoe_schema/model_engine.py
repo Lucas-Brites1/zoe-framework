@@ -1,5 +1,6 @@
 from zoe_schema.model_schema import Model
 from zoe_schema.field_schema import Field
+from zoe_schema.computed_field_schema import _ComputedField
 from zoe_exceptions.schemas_exceptions.exc_base import ZoeSchemaException
 from zoe_exceptions.schemas_exceptions.exc_type import ErrorCode
 from zoe_exceptions.schemas_exceptions.exc_aggregate import ZoeSchemaAggregateException
@@ -20,7 +21,7 @@ class ModelEngine:
         cache_key = model_class.__name__
 
         if cache_key in ModelEngine.__model_structure_cache:
-            model_info = ModelEngine.__get_cached_model_info(cache_key, model_class, data)
+            model_info = ModelEngine.__get_cached_model_info(cache_key, data)
         else:
             model_info = ModelInspector._get_model_info(model_class, data)
             ModelEngine.__cache_model_structure(cache_key, model_info)
@@ -51,6 +52,7 @@ class ModelEngine:
 
         for field_name, field_info in model_info.model_fields.items():
             fields_structure[field_name] = {
+                'iscomputed': isinstance(field_info.field_object, _ComputedField),
                 'field_type': field_info.field_type,
                 'field_is_optional': field_info.field_is_optional,
                 'field_object': field_info.field_object,
@@ -63,14 +65,26 @@ class ModelEngine:
         )
 
     @staticmethod
-    def __get_cached_model_info(cache_key: str, model_class: type[Model], data: dict) -> ModelInfo:
+    def __get_cached_model_info(cache_key: str, data: dict) -> ModelInfo:
         model_name, model_class_cached, fields_structure = ModelEngine.__model_structure_cache[cache_key]
 
+        tobe_processed: dict[str, _ComputedField] = {}
         fields = {}
+
         for field_name, field_meta in fields_structure.items():
             field_obj = field_meta['field_object']
+            iscomputed: bool = field_meta['iscomputed']
 
-            field_value = ModelInspector._process_field_value(field=field_obj, field_name=field_name, field_type=field_meta['field_type'], data_ref=data)
+            if iscomputed:
+                tobe_processed[field_name] = field_obj
+                continue
+
+            field_value = ModelInspector._process_field_value(
+                field=field_obj,
+                field_name=field_name,
+                field_type=field_meta['field_type'],
+                data_ref=data
+            )
 
             fields[field_name] = FieldInfo(
                 field_name=field_name,
@@ -78,6 +92,18 @@ class ModelEngine:
                 field_is_optional=field_meta['field_is_optional'],
                 field_body_value=field_value,
                 field_object=field_obj
+            )
+
+        processed_values: dict[str, Any] = {name: info.field_body_value for name, info in fields.items()}
+
+        for computed_field_name, computed_field_object in tobe_processed.items():
+            lambda_value: Any = computed_field_object._lambda(processed_values)
+            fields[computed_field_name] = FieldInfo(
+                field_name=computed_field_name,
+                field_body_value=lambda_value,
+                field_is_optional=fields_structure[computed_field_name]['field_is_optional'],
+                field_object=computed_field_object,
+                field_type=fields_structure[computed_field_name]['field_type'],
             )
 
         return ModelInfo(
@@ -192,6 +218,8 @@ class ModelEngine:
                 continue
 
             value = field_info.field_body_value
+            if isinstance(field_info.field_object, _ComputedField):
+                continue
 
             for validator in field_info.field_object.validators:
                 if value is None and not isinstance(validator, (NotNull, Required)):
