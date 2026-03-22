@@ -7,7 +7,7 @@ pip install zoe-framework
 ```
 
 [![Python](https://img.shields.io/badge/python-3.11+-blue)](https://python.org)
-[![Version](https://img.shields.io/badge/version-v0.2.0-blue)](https://pypi.org/project/zoe-framework)
+[![Version](https://img.shields.io/badge/version-v0.3.0-blue)](https://pypi.org/project/zoe-framework)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 Full documentation at [zoe-framework.dev](https://zoe-framework.dev)
@@ -17,9 +17,12 @@ Full documentation at [zoe-framework.dev](https://zoe-framework.dev)
 ## Why Zoe?
 
 - **Zero dependencies** — pure Python standard library
+- **Fully async** — built on `asyncio.start_server`, supports async handlers and middlewares
 - **Type-aware injection** — body, services, and request resolved automatically via type hints
 - **Aggregated validation** — all field errors returned at once, never just the first
 - **Three DI lifecycles** — `@Singleton`, `@Transient`, and `@Scoped` out of the box
+- **Field generators** — auto-generate UUIDs, timestamps, tokens, slugs and more
+- **Computed fields** — derive field values from other fields at request time
 - **Multipart support** — file uploads with typed field access, no setup required
 - **Rich middleware stack** — Logger, CORS, Limiter, Guard, Helmet, StaticFiles, BodyLimiter
 
@@ -33,7 +36,7 @@ from zoe import App, Server, Router, Request, Response, HttpCode
 router = Router(prefix="/")
 
 @router.get("/hello")
-def hello(req: Request) -> Response:
+async def hello(req: Request) -> Response:
     return Response.text(HttpCode.OK, text="Hello, world!")
 
 if __name__ == "__main__":
@@ -56,25 +59,25 @@ from zoe import Router, Request, Response, HttpCode
 router = Router(prefix="/users")
 
 @router.get("/")
-def list_users(req: Request) -> Response:
+async def list_users(req: Request) -> Response:
     return Response.json(HttpCode.OK, body=[])
 
 @router.post("/")
-def create_user(req: Request) -> Response: ...
+async def create_user(req: Request) -> Response: ...
 
 @router.get("/{user_id}")
-def get_user(req: Request) -> Response:
+async def get_user(req: Request) -> Response:
     user_id = req.path_params.get("user_id")
     return Response.json(HttpCode.OK, body={"id": user_id})
 
 @router.put("/{user_id}")
-def update_user(req: Request) -> Response: ...
+async def update_user(req: Request) -> Response: ...
 
 @router.patch("/{user_id}")
-def patch_user(req: Request) -> Response: ...
+async def patch_user(req: Request) -> Response: ...
 
 @router.delete("/{user_id}")
-def delete_user(req: Request) -> Response: ...
+async def delete_user(req: Request) -> Response: ...
 ```
 
 ### Decorator style (class-based)
@@ -86,7 +89,7 @@ router = Router(prefix="/users")
 
 @router.get("/{user_id}")
 class GetUserHandler(Handler):
-    def handle(self, request: Request) -> Response:
+    async def handle(self, request: Request) -> Response:
         user_id = request.path_params.get("user_id")
         return Response.json(HttpCode.OK, body={"id": user_id})
 ```
@@ -106,13 +109,13 @@ router.add(Route.delete(endpoint="/{user_id}", handler=DeleteUserHandler()))
 
 ## Handlers
 
-Every handler receives a `Request` and must return a `Response`.
+Every handler receives a `Request` and must return a `Response`. Handlers can be sync or async.
 
 ### Function-based
 
 ```python
 @router.get("/{user_id}")
-def get_user(req: Request) -> Response:
+async def get_user(req: Request) -> Response:
     user_id = req.path_params.get("user_id")
     return Response.json(HttpCode.OK, body={"id": user_id})
 ```
@@ -123,7 +126,7 @@ The `Request` parameter can be named anything as long as it is typed as `Request
 
 ```python
 class GetUserHandler(Handler):
-    def handle(self, request: Request) -> Response:
+    async def handle(self, request: Request) -> Response:
         user_id = request.path_params.get("user_id")
         return Response.json(HttpCode.OK, body={"id": user_id})
 ```
@@ -136,7 +139,7 @@ The `Request` parameter in class-based handlers must be named `request` — Zoe 
 
 ```python
 @router.get("/example/{id}")
-def example(req: Request) -> Response:
+async def example(req: Request) -> Response:
     # Path params
     user_id = req.path_params.get("id")
 
@@ -145,7 +148,7 @@ def example(req: Request) -> Response:
     limit = req.query_params.get("limit", type_=int, default=10)
 
     # Headers
-    content_type = req.headers.get("Content-Type")
+    content_type = req.headers.get("content-type")
 
     # Auth
     token       = req.auth.bearer_token
@@ -196,7 +199,7 @@ class CreateUserDto(Model):
     role:     str = Field(NotNull(), OneOf("admin", "user", "guest"))
 
 @router.post("/users")
-def create_user(req: Request, body: CreateUserDto) -> Response:
+async def create_user(req: Request, body: CreateUserDto) -> Response:
     return Response.json(HttpCode.CREATED, body=body.to_dict())
 ```
 
@@ -207,6 +210,66 @@ class UpdateUserDto(Model):
     name:  str | None = Field()                 # optional, no default
     email: str | None = Field()                 # optional, no default
     role:  str        = Field(default="user")   # required type, default value
+```
+
+### Field generators
+
+Generators automatically produce values for fields that are absent from the request body.
+
+```python
+from zoe import UUID, Date, Token, Slug, DateFormat
+
+class CreateUserDto(Model):
+    id:         str      = Field(generator=UUID())
+    created_at: datetime = Field(generator=Date.Now())
+    token:      str      = Field(generator=Token(token_size=32))
+    slug:       str      = Field(generator=Slug("user", random_part_size=8))
+
+# Date generators
+Date.Now()                                    # datetime with local timezone
+Date.Now(timezone=timezone.utc)               # datetime with UTC timezone
+Date.Now(as_=DateFormat.STRING)               # ISO 8601 string
+Date.Now(as_=DateFormat.UNIX_TIMESTAMP)       # Unix timestamp (int)
+Date.Today()                                  # date only (no time)
+Date.After(days=30)                           # datetime 30 days from now
+Date.After(weeks=2, hours=6)                  # datetime 2 weeks and 6 hours from now
+```
+
+### Computed fields
+
+Derive a field value from other fields at request time.
+
+```python
+from zoe import ComputedField
+
+class CreateProductDto(Model):
+    name:  str = Field(NotNull())
+    price: int = Field(NotNull())
+    slug:  str = ComputedField(lambda fields: fields["name"].lower().replace(" ", "-"))
+```
+
+### Custom validators and generators
+
+```python
+from zoe import FieldValidator, FieldGenerator, Field
+from zoe_exceptions.schemas_exceptions.exc_validator import SchemaValidatorException
+
+class EvenNumber(FieldValidator):
+    def validate(self, value, field_name):
+        if value % 2 != 0:
+            raise SchemaValidatorException(field_name=field_name, message=f"{field_name} must be even.")
+
+class PrefixedID(FieldGenerator):
+    def __init__(self, prefix: str):
+        self.prefix = prefix
+
+    def generate(self):
+        import uuid
+        return f"{self.prefix}-{uuid.uuid4()}"
+
+class MyDto(Model):
+    count: int = Field(EvenNumber())
+    id:    str = Field(generator=PrefixedID("usr"))
 ```
 
 ### Required validator
@@ -238,8 +301,10 @@ Nested models are validated recursively. Errors from nested fields are included 
 ### Strict mode
 
 ```python
+from zoe import Strict
+
+@Strict
 class StrictDto(Model):
-    __strict__ = True
     name: str = Field(NotNull())
     # extra fields in the body will return a 400 error
 ```
@@ -294,7 +359,7 @@ class EmailService:
     def send(self, to: str, subject: str): ...
 
 @router.post("/users")
-def create_user(req: Request, body: CreateUserDto, db: Database, email: EmailService) -> Response:
+async def create_user(req: Request, body: CreateUserDto, db: Database, email: EmailService) -> Response:
     user = db.create(body.name, body.email)
     email.send(user.email, "Welcome")
     return Response.json(HttpCode.CREATED, body={"id": user.id})
@@ -323,7 +388,7 @@ class Database:
 
 ```python
 @router.post("/upload")
-def upload(req: Request) -> Response:
+async def upload(req: Request) -> Response:
     photo       = req.multipart.file("photo")           # UploadFile | None
     attachments = req.multipart.files("attachments")    # list[UploadFile] | None
     title       = req.multipart.field("title")          # str | None
@@ -394,13 +459,14 @@ admin_router.use(Guard(BearerStrategy(secret="secret")))
 ### Custom middleware
 
 ```python
-from zoe import Middleware, Request, Response
+from zoe import AsyncMiddleware, Request, Response
 
-class TimingMiddleware(Middleware):
-    def process(self, request: Request, next) -> Response:
+class TimingMiddleware(AsyncMiddleware):
+    async def process(self, request: Request, next) -> Response:
+        import time
         start = time.time()
-        response = next(request)
-        response.add_header("X-Response-Time", f"{time.time() - start:.3f}s")
+        response = await next(request)
+        response.headers.add("X-Response-Time", f"{time.time() - start:.3f}s")
         return response
 ```
 
@@ -452,17 +518,18 @@ raise NotFoundException(resource="User", identifier=user_id)
 ```python
 from zoe import App, Server, Router, Request, Response, HttpCode
 from zoe import Model, Field, NotNull, Email, Min, Max
+from zoe import UUID, Date
 from zoe import Singleton, Logger, CORS, Limiter
+from datetime import datetime
 
 @Singleton()
 class UserRepository:
     def __init__(self):
         self._users: dict = {}
 
-    def create(self, name: str, email: str) -> dict:
-        uid = str(len(self._users) + 1)
-        self._users[uid] = {"id": uid, "name": name, "email": email}
-        return self._users[uid]
+    def create(self, id: str, name: str, email: str) -> dict:
+        self._users[id] = {"id": id, "name": name, "email": email}
+        return self._users[id]
 
     def find_all(self) -> list:
         return list(self._users.values())
@@ -472,24 +539,26 @@ class UserRepository:
 
 
 class CreateUserDto(Model):
-    name:  str = Field(NotNull())
-    email: str = Field(NotNull(), Email())
-    age:   int = Field(NotNull(), Min(18), Max(120))
+    id:         str      = Field(generator=UUID())
+    created_at: datetime = Field(generator=Date.Now())
+    name:       str      = Field(NotNull())
+    email:      str      = Field(NotNull(), Email())
+    age:        int      = Field(NotNull(), Min(18), Max(120))
 
 
 router = Router(prefix="/users")
 
 @router.post("/")
-def create_user(req: Request, body: CreateUserDto, repo: UserRepository) -> Response:
-    user = repo.create(body.name, body.email)
+async def create_user(req: Request, body: CreateUserDto, repo: UserRepository) -> Response:
+    user = repo.create(body.id, body.name, body.email)
     return Response.json(HttpCode.CREATED, body=user)
 
 @router.get("/")
-def list_users(req: Request, repo: UserRepository) -> Response:
+async def list_users(req: Request, repo: UserRepository) -> Response:
     return Response.json(HttpCode.OK, body=repo.find_all())
 
 @router.get("/{user_id}")
-def get_user(req: Request, repo: UserRepository) -> Response:
+async def get_user(req: Request, repo: UserRepository) -> Response:
     user = repo.find(req.path_params.get("user_id"))
     if user is None:
         return Response.json(HttpCode.NOT_FOUND, body={"error": "User not found"})
@@ -534,10 +603,10 @@ your-project/
 | Version | Focus | Status |
 |---|---|---|
 | `v0.1.0-alpha` | Core routing, validation, basic DI, middlewares | released |
-| `v0.2.0` | 3 DI lifecycles, multipart, all response types, Guard, Helmet, StaticFiles, nested models, Env | current |
-| `v0.3.0` | Global exception handler, Container.reset(), test client | planned |
-| `v0.4.0` | OpenAPI / Swagger generation | planned |
-| `v0.5.0` | Async/await support | planned |
+| `v0.2.0` | 3 DI lifecycles, multipart, all response types, Guard, Helmet, StaticFiles, nested models, Env | released |
+| `v0.3.0` | Full async support, field generators, ComputedField, early config validation, unit tests | current |
+| `v0.4.0` | Global exception handler, test client, Container.reset() | planned |
+| `v0.5.0` | Auto-documentation (`/docs` route, OpenAPI/JSON output) | planned |
 | `v1.0.0` | Stable API, full documentation, production-ready | planned |
 
 ---
