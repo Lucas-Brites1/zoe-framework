@@ -155,6 +155,7 @@ class ModelEngine:
                 type_errors.append(ZoeSchemaException(field_name=field_name, message=message, error_code=ErrorCode.VALUE_MISMATCH))
                 continue
 
+
             if value is None and field_info.field_is_optional:
                 continue
 
