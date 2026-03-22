@@ -4,6 +4,11 @@ from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from zoe_exceptions.exc_internal_exc import InternalServerException
 
 class Model:
+  def __init_subclass__(cls, **kwargs):
+    from zoe_di.inspector import ModelInspector
+    super().__init_subclass__(**kwargs)
+    ModelInspector._inspect_model(cls)
+
   def __init__(self: "Model", **kwargs):
     self._Model__strict: bool = getattr(self.__class__, '_Model__strict__', False)
 
