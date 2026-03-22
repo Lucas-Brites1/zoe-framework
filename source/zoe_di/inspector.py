@@ -4,7 +4,8 @@ from types import UnionType
 from dataclasses import dataclass
 from enum import Enum
 from zoe_schema.model_schema import Model
-from zoe_schema.field_schema import _Field, FieldValidator
+from zoe_schema.field_schema import _Field
+from zoe_schema.computed_field_schema import _ComputedField
 from zoe_schema.schema_validators.not_null import NotNull
 from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 
@@ -49,7 +50,7 @@ class FieldInfo:
   field_type: Type | None
   field_is_optional: bool
   field_body_value: Any
-  field_object: _Field
+  field_object: _Field | _ComputedField
 
 @dataclass
 class FieldMetadata:
@@ -67,19 +68,20 @@ class ModelInfo:
 class ModelInspector:
   #is_optional@ #_process_field_value@ #_get_fields@ # get_model_info #validate_strict_mode
   @staticmethod
-  def _get_fields_metadata(model_ref: Type[Model]) -> dict[str, FieldMetadata]:
+  def _inspect_model(model_ref: Type[Model]) -> tuple[dict[str, FieldMetadata], dict[str, _ComputedField]]:
     fields_meta: dict[str, FieldMetadata] = {}
     hints: dict[str, Type] = get_type_hints(model_ref)
     model_dict: dict[str, Any] = model_ref.__dict__
-
-    print(f"Hints: {hints}\n")
-    print(f"Model Dict: {model_dict}\n")
+    computed_fields: dict[str, _ComputedField] = {}
 
     for attr_name, attr_type in hints.items():
       if attr_name == "return" or attr_name.startswith("_"):
           continue
 
-      field_obj: _Field | None = model_dict.get(attr_name, None)
+      field_obj: _Field | _ComputedField | None = model_dict.get(attr_name, None)
+      if isinstance(field_obj, _ComputedField):
+         computed_fields[attr_name] = field_obj
+         continue
 
       if not isinstance(field_obj, _Field):
         field_obj = _Field()
@@ -91,47 +93,65 @@ class ModelInspector:
          field_object=field_obj
       )
 
-    return fields_meta
+    return (fields_meta, computed_fields)
 
   @staticmethod
-  def _get_fields(model_ref: Type[Model], data_ref: dict[str, Any]) -> dict[str, FieldInfo]:
-    fields_: dict[str, FieldInfo] = {}
+  def _build_fields(model_ref: Type[Model], data_ref: dict[str, Any]) -> dict[str, FieldInfo]:
     hints: dict[str, Type] = get_type_hints(model_ref)
-    model_dict: dict[str, Any] = model_ref.__dict__
+    fields_metadata, computed_fields_ = ModelInspector._inspect_model(model_ref=model_ref)
+    fields_meta: dict[str, FieldMetadata] = fields_metadata
+    computed_fields: dict[str, _ComputedField] = computed_fields_
 
-    for attr_name, attr_type in hints.items():
-        if attr_name == "return" or attr_name.startswith("_"):
-            continue
+    fields_info: dict[str, FieldInfo] = {}
 
-        field_obj: _Field | None = model_dict.get(attr_name)
+    for fname, fmeta in fields_meta.items():
+      if fmeta.field_object.default_value is not None and fmeta.field_type is not None:
+          ModelInspector._validate_default_type(
+              field_name=fmeta.field_name,
+              field_type=fmeta.field_type,
+              default_value=fmeta.field_object.default_value,
+              model_name=model_ref.__name__
+          )
 
-        if not isinstance(field_obj, _Field):
-            field_obj = _Field()
+      field_value: Any = ModelInspector._process_field_value(
+          field=fmeta.field_object,
+          field_type=fmeta.field_type if fmeta.field_type is not None else type(None),
+          field_name=fmeta.field_name,
+          data_ref=data_ref
+      )
 
-        if field_obj.default_value is not None:
-            ModelInspector._validate_default_type(
-                field_name=attr_name,
-                field_type=attr_type,
-                default_value=field_obj.default_value,
-                model_name=model_ref.__name__
-            )
+      fields_info[fname] = FieldInfo(
+          field_name=fmeta.field_name,
+          field_type=fmeta.field_type,
+          field_body_value=field_value,
+          field_object=fmeta.field_object,
+          field_is_optional=ModelInspector.is_optional(hints[fname])
+      )
 
-        field_value: Any = ModelInspector._process_field_value(
-            field=field_obj,
-            field_type=attr_type,
-            field_name=attr_name,
-            data_ref=data_ref
-        )
-
-        fields_[attr_name] = FieldInfo(
-            field_name=attr_name,
-            field_type=attr_type,
-            field_is_optional=ModelInspector.is_optional(type_hint=attr_type),
-            field_body_value=field_value,
-            field_object=field_obj
-        )
-
+    fields_ = ModelInspector._process_computed_fields(
+       fields_infos=fields_info,
+       computed_fields=computed_fields,
+       model_hints=hints
+      )
     return fields_
+
+  @staticmethod
+  def _process_computed_fields(fields_infos: dict[str, FieldInfo], computed_fields: dict[str, _ComputedField], model_hints: dict[str, Any]) -> dict[str, FieldInfo]:
+      processed_values: dict[str, Any] = {name: info.field_body_value for name, info in fields_infos.items()}
+
+      for field_name, cmpt_field in computed_fields.items():
+        result: Any = cmpt_field._lambda(processed_values)
+        expected_type = model_hints[field_name]
+
+        fields_infos[field_name] = FieldInfo(
+          field_name=field_name,
+          field_type=expected_type,
+          field_is_optional=ModelInspector.is_optional(expected_type),
+          field_body_value=result,
+          field_object=cmpt_field
+        )
+
+      return fields_infos
 
   @staticmethod
   def _validate_default_type(
@@ -253,12 +273,12 @@ class ModelInspector:
     return ModelInfo(
       model_name=model_ref.__name__,
       model_class=model_ref,
-      model_fields=ModelInspector._get_fields(model_ref=model_ref, data_ref=body_data)
+      model_fields=ModelInspector._build_fields(model_ref=model_ref, data_ref=body_data)
     )
 
   @staticmethod
   def _can_resolve_without_body(model_ref: Type[Model]) -> bool:
-    fields_meta: dict[str, FieldMetadata] = ModelInspector._get_fields_metadata(model_ref=model_ref)
+    fields_meta, _ = ModelInspector._inspect_model(model_ref=model_ref)
 
     for field_metadata in fields_meta.values():
         field: _Field = field_metadata.field_object
