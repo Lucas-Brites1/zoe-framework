@@ -86,6 +86,15 @@ class ModelInspector:
       if not isinstance(field_obj, _Field):
         field_obj = _Field()
 
+      if field_obj.is_required and ModelInspector.is_optional(attr_type):
+        raise InternalServerException.from_non_http_error(
+           ZoeNonHttpError(
+            why=f"Field '{attr_name}' is marked as 'required' but its type is optional",
+            explain=f"'required=True' means the field must be present in the request body, but '{attr_name}' is typed as optional ('{attr_type}'). \nThis is a contradiction — a required field can never be null, so declaring it as optional makes no sense.",
+            fix=f"Either remove 'required=True' or change the type hint from optional to a concrete type:\n  {attr_name}: str = Field(Required())\n  # or\n  {attr_name}: str = Field(required=True)"
+           )
+        )
+
       fields_meta[attr_name] = FieldMetadata(
          field_name=attr_name,
          field_type=attr_type,
