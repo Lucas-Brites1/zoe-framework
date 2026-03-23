@@ -7,6 +7,7 @@ from zoe_exceptions.exc_internal_exc import InternalServerException
 from zoe_exceptions.http_exceptions.exc_heavy_payload import PayloadTooLargeException
 from zoe_http.bytes import Bytes
 import asyncio
+import ssl
 
 class Server:
     _CHUNK_SIZE: Bytes = Bytes.from_kb(n=5)
@@ -21,7 +22,11 @@ class Server:
             port: int = 8080,
             max_connections: int = 0,
             max_request_size: Bytes = _DEFAULT_MAX_REQUEST_SIZE,
-            keep_alive_timeout: int = _DEFAULT_KEEP_ALIVE_TIMEOUT_SECONDS
+            keep_alive_timeout: int = _DEFAULT_KEEP_ALIVE_TIMEOUT_SECONDS,
+            ssl_certfile: str | None = None,
+            ssl_keyfile: str | None = None,
+            ssl_password: str | bytes | None = None,
+            ssl_context: ssl.SSLContext | None = None
           ) -> None:
         self.__app = application
         self.__host = host
@@ -30,6 +35,15 @@ class Server:
         self._max_request_size = max_request_size
         self._keep_alive_timeout = keep_alive_timeout
         self.__running = False
+        self.__tls_certificate: ssl.SSLContext | None = None
+
+        if ssl_context:
+            self.__tls_certificate = ssl_context
+
+        elif ssl_certfile and ssl_keyfile:
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            ctx.load_cert_chain(certfile=ssl_certfile, keyfile=ssl_keyfile, password=ssl_password)
+            self.__tls_certificate = ctx
 
     async def __read_request(self, reader: asyncio.StreamReader) -> tuple[bytes, bytes] | None:
         raw: bytes = b""
@@ -137,8 +151,10 @@ class Server:
       self.__running = True
 
       server: asyncio.Server = await asyncio.start_server(
-          self._handle,
-          self.__host, self.__port,
+          client_connected_cb=self._handle,
+          host=self.__host,
+          port=self.__port,
+          ssl=self.__tls_certificate
         )
 
       async with server:
