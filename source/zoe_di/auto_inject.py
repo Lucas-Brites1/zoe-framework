@@ -208,7 +208,6 @@ class Injectable:
                         resolved_by=_InjectableBy.NAME
                     )
                 )
-                cls.dependenci
                 continue
             
             elif Container.has(type_):
