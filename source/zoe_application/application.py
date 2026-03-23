@@ -85,6 +85,9 @@ class App:
         self.__base_router.add(HealthCheck.get_handler())
         self.__base_router.add(RoutesHandler.get_handler(routers=self.__routers))
 
+    def _delete_merged_routers(self: "App") -> None:
+      self.__routers = [r for r in self.__routers if not r.is_merged]
+
     @staticmethod
     def _easter_egg() -> None:
         # I don't have a favorite — all three are equally loved.
