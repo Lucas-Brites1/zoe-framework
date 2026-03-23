@@ -56,7 +56,7 @@ class Hook:
           return handler
 
         elif isinstance(handler, type) and issubclass(handler, Handler):
-          handler.__original_handle__ = handler.handle    # type: ignore
+          handler.__zoe_original_handle__ = handler.handle    # type: ignore
           handler.__afterfn__ = self.after_fn             # type: ignore
 
           async def wrapped_handle(self_handler, **kwargs):
