@@ -4,6 +4,7 @@ from zoe_di.inspector import Inspector, ObjectKind, CallableInfo, ParamInfo
 from zoe_di.container import Container
 from zoe_exceptions.exc_internal_exc import InternalServerException
 from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
+from zoe_schema.model_schema import Model
 from enum import Enum
 
 class _InjectableBy(Enum):
@@ -131,6 +132,40 @@ class Injectable:
                     )
                 )
             )
+
+        if issubclass(wrapped, Model):
+            raise InternalServerException.from_non_http_error(
+                ZoeNonHttpError(
+                    why=f"@Injectable cannot be used on Model classes",
+                    explain=(
+                        f"'{wrapped.__name__}' inherits from Model, which is designed for "
+                        f"data transfer objects (DTOs) that represent request/response payloads.\n"
+                        f"Models should only contain data fields, not injected dependencies. "
+                        f"Mixing DTOs with dependency injection violates separation of concerns "
+                        f"and can cause serialization issues."
+                    ),
+                    fix=(
+                        f"Option 1 - Use a separate service class:\n"
+                        f"  # DTO (data only)\n"
+                        f"  class {wrapped.__name__}(Model):\n"
+                        f"      name: str\n"
+                        f"      email: str\n\n"
+                        f"  # Service (with dependencies)\n"
+                        f"  @Injectable\n"
+                        f"  class {wrapped.__name__}Service:\n"
+                        f"      def __init__(self, db: DatabaseService):\n"
+                        f"          self.db = db\n\n"
+                        f"      def create_user(self, data: {wrapped.__name__}):\n"
+                        f"          return self.db.save(data)\n\n"
+                        f"Option 2 - If you need dependencies, don't inherit from Model:\n\n"
+                        f"  @Injectable\n"
+                        f"  class {wrapped.__name__}:  # Not a Model\n"
+                        f"      def __init__(self, db: DatabaseService):\n"
+                        f"          ..."
+                    )
+                )
+            )
+
 
         internal_variables: dict[str, type[Any]] = cls.__resolve_internal_variables(kind=kind, ref=wrapped)
         internal_wrapped_callables: list[CallableInfo] = cls.__capture_internal_functions(kind=kind, ref=wrapped)
