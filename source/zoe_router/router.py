@@ -37,7 +37,7 @@ class Router:
     def add(self, route: Route) -> None:
         self.__assigned_routes.add(route=route)
 
-    def merge(self, r_: "Router") -> "Router":
+    def extends(self, r_: "Router") -> "Router":
         for route in r_.assigned_routes:
             new_endpoint = r_.prefix + route.endpoint
             new_route = Route(
