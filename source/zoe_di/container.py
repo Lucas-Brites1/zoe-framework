@@ -3,7 +3,7 @@ from zoe_di.lifecycle import TRANSIENT, SINGLETON, PROVIDED, Lifecycle
 from zoe_di.inspector import Inspector, ObjectKind
 from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from zoe_exceptions.exc_non_http_aggregate import ZoeNonHttpAggregate
-from typing import Any, TypeAlias
+from typing import Any, TypeAlias, Type
 from contextvars import ContextVar
 import uuid
 
@@ -104,6 +104,15 @@ class Container:
 
         for pname, pvalue in box.info.callable_params.items():  # type: ignore
             if pname not in box.provided_params:
+                if Container.has(ref=pname):
+                    kwargs[pname] = Container.resolve(pname)
+                    continue
+                elif Container.has(ref=pvalue.param_type):
+                    ptype: Type | None = pvalue.param_type
+                    if ptype is not None:
+                      kwargs[pname] = Container.resolve(ptype)
+                      continue
+
                 if pvalue.param_is_required:
                     errors.append(
                         ZoeNonHttpError(
