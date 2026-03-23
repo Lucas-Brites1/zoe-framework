@@ -326,5 +326,28 @@ class Inspector:
     )
 
   @staticmethod
+  def get_annotations(obj: type[Any]) -> dict[str, type[Any]]:
+    if ObjectKind.from_object(object=obj) != ObjectKind.CLASS:
+      return {}
+
+    return obj.__annotations__
+
+  @staticmethod
+  def get_internal_methods_info(obj: type[Any], skip_fields: dict = {}) -> list[CallableInfo] | None:
+    internal_methods: list[CallableInfo] = []
+    
+    for name_, type_ in obj.__dict__.items():
+      if name_ in skip_fields or name_ == obj.__name__:
+        continue
+
+      if not callable(type_): continue
+
+      internal_methods.append(
+        Inspector.callable_infos(fn=type_)
+      )
+
+    return internal_methods
+
+  @staticmethod
   def object_kind(obj: Any) -> ObjectKind:
     return ObjectKind.from_object(object=obj)
