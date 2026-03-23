@@ -132,16 +132,47 @@ class Injectable:
                 )
             )
 
-        dependencies_count: int = 0
-
         internal_variables: dict[str, type[Any]] = cls.__resolve_internal_variables(kind=kind, ref=wrapped)
         internal_wrapped_callables: list[CallableInfo] = cls.__capture_internal_functions(kind=kind, ref=wrapped)
 
         analyzed_methods: list[_AnalysedMethod] = cls.__analyze_injectable_params(internal_methods=internal_wrapped_callables)
         analyzed_vars: list[_AnalysedVar] = cls.__analyze_injectable_variables(internal_variables=internal_variables)
 
-        dependencies_count += len(analyzed_methods) + len(analyzed_vars)
-        print(dependencies_count)
+        dependencies_count: int = (
+            len(analyzed_vars) + 
+            sum(len(m.injectable_params) for m in analyzed_methods) 
+        )
+
+        if not dependencies_count:
+            raise InternalServerException.from_non_http_error(
+                error=ZoeNonHttpError(
+                    why=f"'{wrapped.__name__}' is decorated with @Injectable but has no injectable parameters or attributes",
+                    explain=(
+                        f"@Injectable wraps class methods to enable automatic dependency injection.\n"
+                        f"This involves runtime overhead for method interception and parameter resolution.\n"
+                        f"'{wrapped.__name__}' has no parameters or fields registered in the Container, "
+                        f"so the decorator adds unnecessary processing cost without providing any functionality."
+                    ),
+                     fix=(
+                        f"Option 1 - Remove the decorator:\n"
+                        f"  class {wrapped.__name__}:  # No @Injectable needed\n"
+                        f"      ...\n\n"
+                        f"Option 2 - Add injectable dependencies:\n"
+                        f"  # Register dependencies in Container\n"
+                        f"  @Singleton(...)\n"
+                        f"  class DatabaseService:\n"
+                        f"      ...\n\n"
+                        f"  # Or provide instances with keys\n"
+                        f"  Container.provide_instance(CacheService(...), key='cache')\n\n"
+                        f"  # Then use @Injectable\n"
+                        f"  @Injectable\n"
+                        f"  class {wrapped.__name__}:\n"
+                        f"      cache: CacheService  # Injected by key 'cache'\n\n"
+                        f"      def __init__(self, db: DatabaseService):  # Injected by type\n"
+                        f"          ..."
+                        )
+                    )
+                )
         
         for method in analyzed_methods:
             if method.has_injectable_params:
@@ -153,16 +184,8 @@ class Injectable:
 
     @classmethod
     def __capture_internal_functions(cls, kind: ObjectKind, ref: Type) -> list[CallableInfo] | None:
-        result: list[CallableInfo] = []
-        match kind:
-            case ObjectKind.FUNC:
-                result.append(Inspector.callable_infos(ref))
-            case ObjectKind.CLASS:
-                result = Inspector.get_internal_methods_info(obj=ref, skip_fields=Injectable._PYTHON_MAGIC_ATTRS)
-            case _:
-                return None
-
-        return result
+        result: list[CallableInfo] = Inspector.get_internal_methods_info(obj=ref, skip_fields=Injectable._PYTHON_MAGIC_ATTRS)
+        return result or []
 
     @classmethod
     def __resolve_internal_variables(cls, kind: ObjectKind, ref: Type) -> dict[str, type[Any]]:
@@ -185,6 +208,7 @@ class Injectable:
                         resolved_by=_InjectableBy.NAME
                     )
                 )
+                cls.dependenci
                 continue
             
             elif Container.has(type_):
