@@ -22,12 +22,33 @@ class Router:
 
         self.__prefix = prefix
         self.__assigned_routes: Routes = Routes()
+        self.__merged: bool = False
         self.__router_middlewares: list[Middleware] = []
         self.__already_reordered: bool = False
         self.__compiled_routes: dict[str, tuple[re.Pattern, list[str]]] = {}
 
+    def _set_as_merged(self) -> None:
+      self.__merged = True
+
+    @property
+    def is_merged(self) -> bool:
+        return self.__merged
+
     def add(self, route: Route) -> None:
         self.__assigned_routes.add(route=route)
+
+    def merge(self, r_: "Router") -> "Router":
+        for route in r_.assigned_routes:
+            new_endpoint = r_.prefix + route.endpoint
+            new_route = Route(
+                endpoint=new_endpoint,
+                method=route.method,
+                handler=route.handler
+            )
+            self.assigned_routes.add(new_route)
+
+        r_._set_as_merged()
+        return self
 
     def use(self, middleware: Middleware) -> "Router":
         self.__router_middlewares.append(middleware)
