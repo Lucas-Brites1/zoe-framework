@@ -29,12 +29,15 @@ class Server:
             ssl_context: ssl.SSLContext | None = None
           ) -> None:
         self.__app = application
+
         self.__host = host
         self.__port = port
+        self.__running = False
+
         self._max_connections = max_connections
         self._max_request_size = max_request_size
         self._keep_alive_timeout = keep_alive_timeout
-        self.__running = False
+
         self.__tls_certificate: ssl.SSLContext | None = None
 
         if ssl_context:
@@ -149,6 +152,7 @@ class Server:
 
     async def _start(self) -> None:
       self.__running = True
+      self.__app._delete_merged_routers()
 
       server: asyncio.Server = await asyncio.start_server(
           client_connected_cb=self._handle,
