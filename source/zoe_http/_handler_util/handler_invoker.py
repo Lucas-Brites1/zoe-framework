@@ -18,8 +18,9 @@ class HandlerInvoker:
     _IGNORE_PARAMS = ("return", "self")
     @staticmethod
     def get_hints(handler: Handler) -> dict:
+        fn = getattr(handler, "__zoe_original_handle__", None) or handler.handle
         return typing.get_type_hints(
-            handler.handle,
+            fn,
             globalns=vars(inspect.getmodule(type(handler)))
         )
 
@@ -75,7 +76,7 @@ class HandlerInvoker:
     def let_container_resolve(class_reference: Type, param_name: str, kwargs: dict) -> None:
         class_ref_name: str = class_reference.__name__
         if (Container.has(ref=class_ref_name)):
-            kwargs[class_ref_name] = Container.resolve(ref=class_ref_name)
+            kwargs[param_name] = Container.resolve(ref=class_ref_name) # m
         elif (Container.has(ref=param_name)):
             kwargs[param_name] = Container.resolve(ref=param_name)
         else:
@@ -114,7 +115,8 @@ class HandlerInvoker:
             except ZoeNonHttpError as e:
                 raise e
 
-            original: typing.Callable | None  = getattr(handler, "__original_handle__", None)
+            original = getattr(handler, "__zoe_original_handle__", None)
+
             handle_fn: typing.Callable        = original if original is not None else handler.handle
             is_coroutine: bool                = inspect.iscoroutinefunction(handle_fn)
 
