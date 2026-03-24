@@ -3,8 +3,10 @@ from zoe_di.lifecycle import SCOPED
 from zoe_di.container import Container
 from zoe_di.inspector import Inspector
 from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
-from typing import Type, Any
+from typing import Type, Any, TypeVar
 from inspect import isclass, isfunction
+
+T = TypeVar('T')
 
 class Scoped:
     def __init__(self, key: str | None = None, **kwargs) -> None:
@@ -29,7 +31,7 @@ class Scoped:
         self.key = key
         self.params = kwargs
 
-    def __call__(self, type_ref: Any) -> Any:
+    def __call__(self, type_ref: type[T]) -> type[T]:
         scoped_box: Box = Box(obj=type_ref, lifecycle=SCOPED, key=self.key, params=self.params)
         Container.provide(box=scoped_box)
         return type_ref

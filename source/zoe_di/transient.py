@@ -3,8 +3,10 @@ from zoe_di.lifecycle import TRANSIENT
 from zoe_di.container import Container
 from zoe_di.inspector import Inspector
 from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
-from typing import Type, Any
+from typing import Type, Any, TypeVar
 from inspect import isclass, isfunction
+
+T = TypeVar('T')
 
 class Transient:
     def __init__(self, key: str | None = None, **kwargs) -> None:
@@ -29,7 +31,7 @@ class Transient:
         self.key = key
         self.params = kwargs
 
-    def __call__(self, type_ref: Any) -> Any:
+    def __call__(self, type_ref: type[T]) -> type[T]:
         factory_box: Box = Box(obj=type_ref, lifecycle=TRANSIENT, key=self.key, params=self.params)
         Container.provide(box=factory_box)
         return type_ref
