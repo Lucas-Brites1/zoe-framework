@@ -13,6 +13,11 @@ from zoe_di.container import Container
 from zoe_di.singleton import Singleton
 from zoe_di.transient import Transient
 from zoe_di.scoped import Scoped
+from zoe_di.lifecycle import Lifecycle
+
+# Documentation
+from zoe_doc.doc_metadata import *
+from zoe_doc.doc_generator import doc
 
 # HTTP-Utils
 from zoe_http._response_util.response_cookies import SameSitePolicy, CookieAttributes, CookiePair
@@ -106,7 +111,7 @@ __all__ = [  # type: ignore
     # Schema
     "Model", "Field", "Strict",
     # Dependency Injection
-    "Container", "Box", "Singleton", "Transient", "Scoped",
+    "Container", "Box", "Singleton", "Transient", "Scoped", "Lifecycle",
     # Validators
     "FieldValidator", "NotNull", "Range", "Email", "Pattern", "Password", "Min", "Max", "OneOf", "Assert", "Required",
     # Generators
@@ -119,4 +124,9 @@ __all__ = [  # type: ignore
     "ZoeHttpException", "RouteNotFoundException", "MethodNotAllowedException",
     "NotFoundException", "InternalServerException", "HandlerAbortException",
     "ErrorCode", "ZoeSchemaAggregateException",
+    # Documentation
+    "doc", "DocMetadata", "Summary", "Author",
+    "RouteParam", "RouteHeader", "RouteRequest",
+    "RouteResponse", "RouteSecurity", "DocAuthScheme",
+    "DependsOn", "LogicStep", "BusinessLogic",
 ]
