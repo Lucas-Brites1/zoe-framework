@@ -11,25 +11,6 @@ class Routes:
         return self.__routes_container
 
     def add(self: "Routes", route: Route) -> "Routes":
-      handler = route.handler
-      doc_meta = (
-          getattr(handler, "__zoe_doc__", None) or
-          getattr(getattr(handler, "handle", None), "__zoe_doc__", None) or
-          getattr(getattr(handler, "__zoe_original_handle__", None), "__zoe_doc__", None)
-      )
-
-      print(doc_meta)
-
-      if doc_meta is not None:
-          from zoe_doc.doc_registry import DocRegistry
-          from zoe_doc.doc_metadata import RouteInfo
-          DocRegistry.register(RouteInfo(
-              method=route.method.value,
-              path=route.endpoint,
-              handler=type(handler).__name__,
-              metadata=doc_meta
-          ))
-
       self.__routes_container.append(route)
       return self
 

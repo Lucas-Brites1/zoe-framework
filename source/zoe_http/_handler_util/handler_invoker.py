@@ -116,14 +116,18 @@ class HandlerInvoker:
                 raise e
 
             original = getattr(handler, "__zoe_original_handle__", None)
-
             handle_fn: typing.Callable        = original if original is not None else handler.handle
             is_coroutine: bool                = inspect.iscoroutinefunction(handle_fn)
+            is_bound_method: bool = hasattr(handle_fn, "__self__")
+
+            kwargs[request_param_name] = request
+            if not is_bound_method:
+                kwargs["self"] = handler
 
             if is_coroutine:
-                result = await cast(Coroutine[Any, Any, Response], handle_fn(**{request_param_name: request}, **kwargs))
+                result = await cast(Coroutine[Any, Any, Response], handle_fn(**kwargs))
             else:
-                result = handle_fn(**{request_param_name: request}, **kwargs)
+                result = handle_fn(**kwargs)
 
             after_hook: typing.Callable | None = type(handler).__dict__.get("__afterfn__", None)
             if after_hook is not None:

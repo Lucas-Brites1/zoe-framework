@@ -66,12 +66,20 @@ class Env:
     cls._loaded = True
 
   @classmethod
-  def required(cls, key: str) -> str | RuntimeError:
-      cls._load()
-      value = os.environ.get(key=key)
-      if value is None:
-          raise RuntimeError(f"Missing required environment variable: '{key}'")
-      return value
+  def required(cls, key: str, type_: type | None = None) -> str | RuntimeError:
+    cls._load()
+
+    value = os.environ.get(key=key)
+    if value is None:
+        raise RuntimeError(f"Missing required environment variable: '{key}'")
+
+    if type_ is not None:
+          try:
+              return type_(value)
+          except (ValueError, TypeError):
+              raise RuntimeError(f"Fail trying to convert '{value}' to '{type_.__name__}'")
+
+    return value
 
   @classmethod
   @overload

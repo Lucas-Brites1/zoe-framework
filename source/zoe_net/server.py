@@ -150,9 +150,13 @@ class Server:
       except KeyboardInterrupt:
           pass
 
+    def _application_startup_execs(self) -> None:
+        self.__app._delete_merged_routers()
+        self.__app.documentation
+
     async def _start(self) -> None:
       self.__running = True
-      self.__app._delete_merged_routers()
+      self._application_startup_execs()
 
       server: asyncio.Server = await asyncio.start_server(
           client_connected_cb=self._handle,

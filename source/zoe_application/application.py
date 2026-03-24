@@ -19,9 +19,8 @@ class App:
         self.__middlewares: list[Middleware] = []
         self.__startup_callables: list[Callable] = []
         self.__shutdown_callables: list[Callable] = []
+        self.__documentation_generated: bool = False
         self.__application_builtin_handlers()
-
-        DocGenerator.generate(DocRegistry.all())
 
     def on_startup(self: "App"):
         def callable_wrapper(fn: Callable) -> Callable:
@@ -94,6 +93,18 @@ class App:
     def _delete_merged_routers(self: "App") -> None:
       self.__routers = [r for r in self.__routers if not r.is_merged]
 
+    @property
+    def documentation(self: "App") -> None:
+        if self.__documentation_generated:
+            return None
+
+        all_docs: list = []
+        for router in self.__routers:
+            all_docs.extend(DocRegistry.from_router(router))
+
+        DocGenerator.generate(all_docs)
+        self.__documentation_generated = True
+        
     @staticmethod
     def _easter_egg() -> None:
         # I don't have a favorite — all three are equally loved.

@@ -44,19 +44,21 @@ class GenericHandlerFactory:
           return fn(req, **filtered_kwargs)
 
         handle.__annotations__ = fn.__annotations__
-        handler_generated: Handler = type(  # type: ignore
+        doc_meta = getattr(fn, "__zoe_doc__", None)
+        after_fn_hook: Callable | None = getattr(fn, "__afterfn__", None)
+
+        handler_generated: Handler = type(  
             handler_class_name,
             (Handler,),
             {'handle': handle}
         )
 
-        doc_meta = getattr(fn, "__zoe_doc__", None)
+        instance: Handler = handler_generated()
+
         if doc_meta is not None:
-            setattr(handle, "__zoe_doc__", doc_meta)
-            setattr(handler_generated, "__zoe_doc__", doc_meta)
+            setattr(instance, "__zoe_doc__", doc_meta)
 
-        after_fn_hook: Callable | None = getattr(fn, "__afterfn__", None)
         if after_fn_hook is not None:
-            handler_generated.__afterfn__ = after_fn_hook   # type: ignore
+            instance.__afterfn__ = after_fn_hook 
 
-        return handler_generated()  # type: ignore
+        return instance  
