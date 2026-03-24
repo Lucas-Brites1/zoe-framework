@@ -10,23 +10,31 @@ class FileUtil:
       directory.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
-    def find(filename: str, directory: str | None = None) -> Path | None:
-        if directory:
-            full_path = (Path(directory) / filename).resolve()
-            abs_directory = Path(directory).resolve()
-            if not str(full_path).startswith(str(abs_directory)):
+    def mount_path(*dirs: str, from_root: bool = True) -> Path:
+      path = Path(ROOT) if from_root else Path(dirs[0])
+      start = 0 if not from_root else 0
+      for d in dirs:
+        path = path / d.strip("/")
+      return path
+
+    @staticmethod
+    def find(filename: str, directory: str | Path | None = None) -> Path | None:
+      if directory:
+        full_path = (Path(directory) / filename).resolve()
+        abs_directory = Path(directory).resolve()
+        if not str(full_path).startswith(str(abs_directory)):
+            return None
+        return full_path if full_path.exists() else None
+      else:
+        current = Path.cwd()
+        while True:
+            candidate = (current / filename).resolve()
+            if candidate.exists():
+                return candidate
+            parent = current.parent
+            if parent == current:
                 return None
-            return full_path if full_path.exists() else None
-        else:
-            current = Path.cwd()
-            while True:
-                candidate = (current / filename).resolve()
-                if candidate.exists():
-                    return candidate
-                parent = current.parent
-                if parent == current:
-                    return None
-                current = parent
+            current = parent
 
     @staticmethod
     def resolve_path(directory: str, filename: str) -> Path:
