@@ -50,6 +50,11 @@ class GenericHandlerFactory:
             {'handle': handle}
         )
 
+        doc_meta = getattr(fn, "__zoe_doc__", None)
+        if doc_meta is not None:
+            setattr(handle, "__zoe_doc__", doc_meta)
+            setattr(handler_generated, "__zoe_doc__", doc_meta)
+
         after_fn_hook: Callable | None = getattr(fn, "__afterfn__", None)
         if after_fn_hook is not None:
             handler_generated.__afterfn__ = after_fn_hook   # type: ignore
