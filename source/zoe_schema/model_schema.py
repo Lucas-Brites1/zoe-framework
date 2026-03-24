@@ -42,6 +42,9 @@ class Model:
     else:
       return attr
 
+  def get_example(self) -> dict[str, Any] | None: ...
+  def get_examples(self) -> list[dict[str, Any]] | None: ...
+
   @classmethod
   def is_model(cls, class_reference: type) -> bool:
     return issubclass(class_reference, Model)
