@@ -23,11 +23,11 @@ class _AnalysedVar:
             else "private" if self.name.startswith('_')
             else "public"
         )
-        
+
         type_name = getattr(self.type_, '__name__', repr(self.type_))
-        
+
         return f"Field<{scope}>: {self.name}: {type_name} ({self.resolved_by.value})"
-    
+
     def __repr__(self) -> str:
         return self.__str__()
 
@@ -39,7 +39,7 @@ class _AnalysedParam:
         self.resolved_by = resolved_by
 
     def __str__(self) -> str:
-        return f"<{self.name}: {self.infos.param_type.__name__}> [{self.resolved_by.value}]"
+        return f"<{self.name}: {self.infos.param_type.__name__}> [{self.resolved_by.value}]" # type: ignore
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -60,17 +60,17 @@ class _AnalysedMethod:
     def __str__(self) -> str:
         if not self.injectable_params:
             return f"Method: {self.name} | Injectable params: 0"
-        
+
         visibility = (
             "constructor" if self.name == '__init__'
             else "dunder" if self.name.startswith('__') and self.name.endswith('__')
             else "private" if self.name.startswith('_')
             else "public"
         )
-        
+
         count = len(self.injectable_params)
         params_list = ", ".join(str(p) for p in self.injectable_params)
-        
+
         return (
             f"Method: {self.name}\n"
             f"Scope: {visibility}\n"
@@ -99,7 +99,7 @@ class Injectable:
             '__getstate__', '__setstate__', '__format__',
             '__subclasshook__', '__instancecheck__', '__subclasscheck__'
         })
-        
+
     def __new__(cls, wrapped: Type):
         kind: ObjectKind = Inspector.object_kind(wrapped)
         if kind != ObjectKind.CLASS:
@@ -108,7 +108,7 @@ class Injectable:
                 else f"instance of '{type(wrapped).__name__}'" if kind == ObjectKind.INSTANCE
                 else f"{kind.value}"
             )
-            
+
             raise InternalServerException.from_non_http_error(
                 ZoeNonHttpError(
                     why=f"@Injectable can only be applied to classes",
@@ -168,14 +168,14 @@ class Injectable:
 
 
         internal_variables: dict[str, type[Any]] = cls.__resolve_internal_variables(kind=kind, ref=wrapped)
-        internal_wrapped_callables: list[CallableInfo] = cls.__capture_internal_functions(kind=kind, ref=wrapped)
+        internal_wrapped_callables: list[CallableInfo] | None = cls.__capture_internal_functions(ref=wrapped) or []
 
         analyzed_methods: list[_AnalysedMethod] = cls.__analyze_injectable_params(internal_methods=internal_wrapped_callables)
         analyzed_vars: list[_AnalysedVar] = cls.__analyze_injectable_variables(internal_variables=internal_variables)
 
         dependencies_count: int = (
-            len(analyzed_vars) + 
-            sum(len(m.injectable_params) for m in analyzed_methods) 
+            len(analyzed_vars) +
+            sum(len(m.injectable_params) for m in analyzed_methods)
         )
 
         if not dependencies_count:
@@ -208,33 +208,36 @@ class Injectable:
                         )
                     )
                 )
-        
+
         for method in analyzed_methods:
             if method.has_injectable_params:
                 cls.wrap_method(method=method, target_class=wrapped)
-        
+
         cls.wrap_vars(analyzed_vars=analyzed_vars, target_class=wrapped)
 
         return wrapped
 
     @classmethod
-    def __capture_internal_functions(cls, kind: ObjectKind, ref: Type) -> list[CallableInfo] | None:
-        result: list[CallableInfo] = Inspector.get_internal_methods_info(obj=ref, skip_fields=Injectable._PYTHON_MAGIC_ATTRS)
-        return result or []
+    def __capture_internal_functions(cls, ref: Type) -> list[CallableInfo] | None:
+        result: list[CallableInfo] | None = Inspector.get_internal_methods_info(
+              obj=ref,
+              skip_fields=Injectable._PYTHON_MAGIC_ATTRS
+        )
+        return [] if result is None else result
 
     @classmethod
     def __resolve_internal_variables(cls, kind: ObjectKind, ref: Type) -> dict[str, type[Any]]:
         if kind != ObjectKind.CLASS:
-            return None
+            return {}
 
         vars_: dict[str, Any] = Inspector.get_annotations(obj=ref)
         return vars_
-    
+
     @classmethod
     def __analyze_injectable_variables(cls, internal_variables: dict[str, type[Any]]) -> list[_AnalysedVar]:
         analysed_vars: list[_AnalysedVar] = []
         for name_, type_ in internal_variables.items():
-            
+
             if Container.has(name_):
                 analysed_vars.append(
                     _AnalysedVar(
@@ -244,7 +247,7 @@ class Injectable:
                     )
                 )
                 continue
-            
+
             elif Container.has(type_):
                 analysed_vars.append(
                     _AnalysedVar(
@@ -253,7 +256,7 @@ class Injectable:
                         resolved_by=_InjectableBy.TYPE
                     )
                 )
-            
+
 
         return analysed_vars
 
@@ -270,7 +273,7 @@ class Injectable:
             analyzed_methods.append(current_method)
 
             for param_name, param_info in method.callable_params.items():
-                
+
                 if Container.has(ref=param_name):
                     current_method.add_param(
                         _AnalysedParam(
@@ -280,7 +283,7 @@ class Injectable:
                         )
                     )
                     continue
-                
+
                 elif Container.has(ref=param_info.param_type):
                     current_method.add_param(
                         _AnalysedParam(
@@ -289,7 +292,7 @@ class Injectable:
                             resolved_by=_InjectableBy.TYPE
                         )
                     )
-                
+
         return analyzed_methods
 
     @classmethod
@@ -314,7 +317,7 @@ class Injectable:
             new_annotations.pop(param.name, None)
 
         new_method.__annotations__ = new_annotations
-        
+
         setattr(target_class, method.name, new_method)
 
     @classmethod
@@ -324,11 +327,11 @@ class Injectable:
         @wraps(original_init)
         def new_init(self, *args, **kwargs):
             original_init(self, *args, **kwargs)
-        
+
             for var in analyzed_vars:
                 if var.resolved_by == _InjectableBy.NAME:
                     setattr(self, var.name, Container.resolve(ref=var.name))
                 else:
                     setattr(self, var.name, Container.resolve(ref=var.type_))
-            
+
         target_class.__init__ = new_init

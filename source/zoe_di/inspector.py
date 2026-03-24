@@ -333,9 +333,9 @@ class Inspector:
     return obj.__annotations__
 
   @staticmethod
-  def get_internal_methods_info(obj: type[Any], skip_fields: dict = {}) -> list[CallableInfo] | None:
+  def get_internal_methods_info(obj: type[Any], skip_fields: frozenset = frozenset()) -> list[CallableInfo] | None:
     internal_methods: list[CallableInfo] = []
-    
+
     for name_, type_ in obj.__dict__.items():
       if name_ in skip_fields or name_ == obj.__name__:
         continue
