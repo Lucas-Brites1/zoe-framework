@@ -1,8 +1,11 @@
 from inspect import isfunction
-from typing import Callable, Any
+from typing import Callable, Any, TypeVar
+from functools import wraps
 from contextvars import ContextVar
 from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from zoe_http.request import Request
+
+T = TypeVar('T')
 
 class Hook:
 
@@ -59,6 +62,7 @@ class Hook:
           handler.__zoe_original_handle__ = handler.handle    # type: ignore
           handler.__afterfn__ = self.after_fn             # type: ignore
 
+          @wraps(handler.handle)
           async def wrapped_handle(self_handler, **kwargs):
               request_from_handler: Request | None = self.__retrieve_request_from_handler_class(kwargs)
               if request_from_handler is None:
