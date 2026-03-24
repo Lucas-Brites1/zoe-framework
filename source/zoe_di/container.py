@@ -3,10 +3,11 @@ from zoe_di.lifecycle import TRANSIENT, SINGLETON, PROVIDED, Lifecycle
 from zoe_di.inspector import Inspector, ObjectKind
 from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from zoe_exceptions.exc_non_http_aggregate import ZoeNonHttpAggregate
-from typing import Any, TypeAlias, Type
+from typing import Any, TypeAlias, Type, TypeVar, overload
 from contextvars import ContextVar
 import uuid
 
+T = TypeVar('T')
 Keyref: TypeAlias = str | type | Any
 
 class Container:
@@ -74,7 +75,14 @@ class Container:
                 )
 
     @classmethod
-    def resolve(cls, ref: Keyref) -> Any:
+    @overload
+    def resolve(cls, ref: type[T]) -> T: ...
+    @classmethod
+    @overload
+    def resolve(cls, ref: str) -> Any: ...
+
+    @classmethod
+    def resolve(cls, ref: type[T] | str | Any) -> T | Any:
         key: str = cls.__resolve_key(ref)
 
         if key not in cls.__registry:
