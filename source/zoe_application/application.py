@@ -3,6 +3,8 @@ from zoe_http.response import Response
 from zoe_router.router import Router
 from zoe_router.router import Route, Routes, Router
 from zoe_http.middleware import Middleware
+from zoe_doc.doc_generator import DocGenerator
+from zoe_doc.doc_registry import DocRegistry
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
 from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from zoe_exceptions.exc_internal_exc import InternalServerException
@@ -18,6 +20,8 @@ class App:
         self.__startup_callables: list[Callable] = []
         self.__shutdown_callables: list[Callable] = []
         self.__application_builtin_handlers()
+
+        DocGenerator.generate(DocRegistry.all())
 
     def on_startup(self: "App"):
         def callable_wrapper(fn: Callable) -> Callable:
@@ -82,8 +86,10 @@ class App:
     def __application_builtin_handlers(self: "App") -> None:
         from zoe_handlers.health_check_handler import HealthCheck
         from zoe_handlers.routes_handler import RoutesHandler
+        from zoe_handlers.docs_expose import  DocExpose
         self.__base_router.add(HealthCheck.get_handler())
         self.__base_router.add(RoutesHandler.get_handler(routers=self.__routers))
+        self.__base_router.add(DocExpose.get_handler())
 
     def _delete_merged_routers(self: "App") -> None:
       self.__routers = [r for r in self.__routers if not r.is_merged]
