@@ -269,8 +269,9 @@ class HTMLGen:
 
     @classmethod
     def try_it_out(cls, info: RouteInfo, id: int) -> str:
-        method  = info["method"]
-        path    = info["path"]
+        method  = info.get("method")
+        path    = info.get("path")
+        prefix  = info.get("prefix")
         request: RouteRequest | None = info["metadata"].get("request")
 
         body_placeholder = ""
@@ -328,12 +329,49 @@ class HTMLGen:
             + cls.request_headers(info)
             + cls.request_body(info)
             + cls.responses(info)
+            + cls.author_infos(info)
             + cls.business_logic(info)
             + cls.depends_on(info)
             + cls.try_it_out(info, id)
             + cls.feedback(id)
             + '</div>'
         )
+
+    @staticmethod
+    def author_infos(info: RouteInfo) -> str:
+        author: Author | None = info['metadata'].get('author')
+        if not author:
+            return ""
+
+        name: str = author.get("name")
+        email: str | None = author.get("email") 
+        contact: str | None = author.get("contact")
+        squad: str | None = author.get("squad") 
+        team: str | None = author.get("team")
+
+        html: str = f'<div class="author-info">'
+        html += f"<h2>Author</h2>"
+        html += f'<ul>'
+        html += f'<li>{name}</li>'
+        if email:
+            html += f'<li>{email}</li>'
+
+        if squad:
+            html += f'<li>{squad}</li>'
+
+        if team:
+            html += f'<li>{team}</li>'
+
+        if contact:
+            if isinstance(contact, list):
+                contact = ', '.join(contact)
+
+            html += f'<li>{contact}</li>'
+
+        html += '</ul>'
+        html += '</div>'
+
+        return html
 
     @staticmethod
     def find_tag_and_insert(template: str, tag: str, content: str) -> str:

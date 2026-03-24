@@ -1,8 +1,10 @@
-from typing import Any, Callable, Type, Optional
+from typing import Any, Callable, Type, Optional, TypeVar
 from zoe_doc.doc_metadata import *
 from zoe_doc.dynamic_html import HTMLGen
 from zoe_http._file_util import FileUtil, ROOT, Path
 from zoe_exceptions.exc_internal_exc import InternalServerException, ZoeNonHttpError
+
+T = TypeVar('T')
 
 class DocGenerator:
   _TEMPLATE_PATH: Path = Path(FileUtil.mount_path("/source", "/zoe_doc", "/zoe_doc_files") / "static_page.html")
@@ -11,7 +13,6 @@ class DocGenerator:
   @staticmethod
   def __get_html_template() -> str:
     b_html: bytes | None = FileUtil.read(path=DocGenerator._TEMPLATE_PATH)
-    print(DocGenerator._TEMPLATE_PATH)
 
     if b_html is None:
        raise InternalServerException.from_unexpected_error(
@@ -20,20 +21,16 @@ class DocGenerator:
 
     return b_html.decode(encoding="utf-8", errors="replace")
 
-  @staticmethod
-  def __get_group_prefix(path: str) -> str:
-    parts = [p for p in path.split("/") if p]
-    return "/" + "/".join(parts[:2]) if len(parts) >= 2 else "/" + parts[0] if parts else "/"
 
   @staticmethod
   def __build_sidebar(routes: list[RouteInfo], route_ids: dict[str, int]) -> str:
     groups: dict[str, list[RouteInfo]] = {}
 
     for route_info in routes:
-        prefix = DocGenerator.__get_group_prefix(route_info["path"])
-        if prefix not in groups:
-            groups[prefix] = []
-        groups[prefix].append(route_info)
+        route_prefix: str = route_info["prefix"]
+        if route_prefix not in groups:
+            groups[route_prefix] = []
+        groups[route_prefix].append(route_info)
 
     sidebar_html = ""
     for prefix, group_routes in groups.items():
@@ -49,7 +46,7 @@ class DocGenerator:
   @staticmethod
   def generate(routes: list[RouteInfo]) -> None:
       html = DocGenerator.__get_html_template()
-      route_ids = {info["path"]: i for i, info in enumerate(routes)}
+      route_ids = {info.get("path"): i for i, info in enumerate(routes)}
 
       panels_html  = "".join(HTMLGen.full_panel(info, i) for i, info in enumerate(routes))
       sidebar_html = DocGenerator.__build_sidebar(routes, route_ids=route_ids)
@@ -70,7 +67,7 @@ def doc(
   version:    str | None = None,
   deprecated: bool = False
 ) -> Callable:
-  def wrapped(handler: Any) -> Any:
+  def wrapped(handler: type[T]) -> type[T]:
       meta: DocMetadata = {}
       if summary    is not None: meta["summary"]    = summary
       if author     is not None: meta["author"]     = author
@@ -82,5 +79,6 @@ def doc(
       if version    is not None: meta["version"]    = version
       if deprecated:             meta["deprecated"] = deprecated
       handler.__zoe_doc__ = meta
+      print(handler)
       return handler
   return wrapped

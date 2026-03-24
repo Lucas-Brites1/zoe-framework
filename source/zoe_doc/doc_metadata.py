@@ -29,12 +29,13 @@ class RouteRequest(TypedDict):
   path_params:  NotRequired[list[RouteParam]]
   headers:      NotRequired[list[RouteHeader]]
   body:         NotRequired[Type[Model]]
+  examples:     NotRequired[dict[str, dict[str, Any]]]
 
 class RouteResponse(TypedDict):
   status_code: Required[int]
   description: Required[str]
   body:        NotRequired[Type[Model]]
-  example:     NotRequired[dict[str, Any]]
+  examples:     NotRequired[dict[str, dict[str, Any]]]
 
 class DocAuthScheme(Enum):
   BEARER = "bearer"
@@ -75,5 +76,6 @@ class DocMetadata(TypedDict):
 class RouteInfo(TypedDict):
   method:   str
   path:     str
+  prefix:   str # from router
   handler:  str
   metadata: DocMetadata
