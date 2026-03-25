@@ -6,29 +6,26 @@ from zoe_http._request_util.form_params import FormParams
 from zoe_http._request_util.request_body import Body
 from zoe_http._request_util.request_multipart import Multipart
 from zoe_http._request_util.request_auth import Auth
-from zoe_http._request_util.request_headers import RequestHeader
+from zoe_http._request_util.request_headers import RequestHeaders
 from zoe_http._request_util.request_state import RequestState
 from zoe_exceptions.http_exceptions.exc_malformed_request import MalformedRequestException
 
 class Request:
-    def __init__(self: "Request", header_bytes: bytes, body_bytes: bytes, client_ip: str) -> None:
+    def __init__(self: "Request", headers: RequestHeaders, body_bytes: bytes, client_ip: str) -> None:
         self.__client_ip = client_ip
-        self.__header_bytes = header_bytes
         self.__body_bytes = body_bytes
 
+        self.__header: RequestHeaders = headers
         self.__method: HttpMethod
         self.__route: str
         self.__http_version: str
-
-        self.__header: RequestHeader = RequestHeader()
+        self.__parse_request_line(self.__header._request_line)
 
         self.__form_params = FormParams()
         self.__query_params = QueryParams()
         self.__path_params = PathParams()
         self.__body: Body = Body.empty()
         self.__multipart: Multipart = Multipart.empty()
-
-        self.__parse()
 
         if self.__header.content_type is not None:
           if "multipart/form-data" in self.__header.content_type:
@@ -65,7 +62,7 @@ class Request:
         return self.__route
 
     @property
-    def headers(self: "Request") -> "RequestHeader":
+    def headers(self: "Request") -> "RequestHeaders":
         return self.__header
 
     @property
@@ -125,16 +122,6 @@ class Request:
         self.__method = HttpMethod.str_to_method(method_str=method)
         self.__http_version = http_version
         return self
-
-    def __parse(self: "Request") -> None:
-        decoded_headers: str = self.__header_bytes.decode(
-            encoding="utf-8",
-            errors="replace"
-        )
-        lines = decoded_headers.split("\r\n")
-
-        self.__parse_request_line(lines[0])
-        self.__header._parse(lines[1:])
 
     def _set_normalized_route(self, route: str) -> None:
         self.__route = route
