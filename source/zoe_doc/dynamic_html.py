@@ -1,377 +1,646 @@
 from zoe_doc.doc_metadata import *
+from zoe_doc.html_builder import *
 from zoe_di.inspector import ModelInspector
 from typing import Type
 import json
 
+
 class HTMLGen:
 
     @classmethod
-    def sidebar_route(cls, info: RouteInfo, id: int) -> str:
+    def sidebar_route(cls, info: RouteInfo, id: int, active: bool = False) -> HtmlElement:
         method = info["method"]
         path   = info["path"]
+        class_ = "sidebar-route active" if active else "sidebar-route"
         return (
-            f'<div class="sidebar-sub-item" onclick="showRoute(\'{id}\')">'
-            f'<span class="sidebar-badge b-{method}">{method}</span>'
-            f'{path}'
-            f'</div>'
+            div(class_=class_, data_rid=str(id), onclick=f"showRoute('{id}')")
+            .append(span(class_=f"method-badge m-{method}").append(method))
+            .append(span(class_="route-path-label").append(path))
         )
 
     @classmethod
-    def sidebar_group(cls, prefix: str, group_id: str, routes_html: str) -> str:
+    def sidebar_group(cls, prefix: str, group_id: str, *routes: HtmlElement) -> HtmlElement:
+        container = div(class_="sidebar-sub", id=f"sub-{group_id}")
+        for route in routes:
+            container.append(route)
         return (
-            f'<div class="sidebar-group-label">{prefix}</div>'
-            f'<div class="sidebar-sub" id="sub-{group_id}">'
-            f'{routes_html}'
-            f'</div>'
+            div()
+            .append(div(class_="sidebar-section-label").append(prefix))
+            .append(container)
         )
 
     @classmethod
-    def central_panel(cls, info: RouteInfo, id: int) -> str:
+    def central_panel(cls, info: RouteInfo, id: int, active: bool = False) -> HtmlElement:
         method      = info["method"]
         path        = info["path"]
-        summary     = info["metadata"].get("summary")
+        meta        = info["metadata"]
+        summary     = meta.get("summary")
         title       = summary.get("title", "")       if summary else ""
         description = summary.get("description", "") if summary else ""
-        deprecated  = info["metadata"].get("deprecated", False)
-        version     = info["metadata"].get("version")
+        tags        = summary.get("tags", [])         if summary else []
+        deprecated  = meta.get("deprecated", False)
+        version     = meta.get("version")
 
-        deprecated_badge = '<span class="deprecated-badge">⚠ DEPRECATED</span>' if deprecated else ""
-        version_badge    = f'<span class="nav-version" style="margin-left:8px">{version}</span>' if version else ""
+        class_ = "content-panel active animate-in" if active else "content-panel"
 
-        return (
-            f'<div class="content-panel" id="panel-{id}">'
-            f'<div class="route-badge-row">'
-            f'<span class="route-method-badge b-{method}">{method}</span>'
-            f'<span class="route-path-text">{path}</span>'
-            f'{deprecated_badge}{version_badge}'
-            f'</div>'
-            f'<h1 class="route-title">{title}</h1>'
-            f'<p class="route-desc">{description}</p>'
+        endpoint_row = (
+            div(class_="route-endpoint")
+            .append(span(class_=f"route-method m-{method}").append(method))
+            .append(span(class_="route-path").append(path))
         )
+        if deprecated:
+            endpoint_row.append(span(class_="deprecated-badge").append("⚠ DEPRECATED"))
+        if version:
+            endpoint_row.append(span(class_="version-badge").append(version))
+
+        header_area = div(class_="route-header-area")
+        header_area.append(endpoint_row)
+        header_area.append(h1(class_="route-title").append(title))
+
+        if description:
+            header_area.append(p(class_="route-desc").append(description))
+
+        if tags:
+            tag_row = div(class_="tag-row")
+            for tag in tags:
+                tag_row.append(span(class_="tag").append(tag))
+            header_area.append(tag_row)
+
+        panel = div(class_=class_, id=f"panel-{id}").append(header_area)
+        return panel
 
     @classmethod
-    def path_query_params(cls, info: RouteInfo) -> str:
-        route_request: RouteRequest | None = info["metadata"].get("request")
-        query_params: list[RouteParam] = route_request.get("query_params", []) if route_request else []
-        path_params:  list[RouteParam] = route_request.get("path_params",  []) if route_request else []
-
-        output = ""
-
-        if path_params:
-            output += '<h2 class="section-h">Path Parameters</h2>'
-            for pparam in path_params:
-                output += (
-                    f'<div class="field-row">'
-                    f'<div class="field-top">'
-                    f'<span class="field-fname">{pparam.get("name")}</span>'
-                    f'<span class="field-req-badge req">REQUIRED</span>'
-                    f'</div>'
-                    f'<p class="field-desc">{pparam.get("reason", "")}</p>'
-                    f'</div>'
-                )
-
-        if query_params:
-            output += '<h2 class="section-h">Query Parameters</h2>'
-            for qparam in query_params:
-                output += (
-                    f'<div class="field-row">'
-                    f'<div class="field-top">'
-                    f'<span class="field-fname">{qparam.get("name")}</span>'
-                    f'<span class="field-req-badge opt">OPTIONAL</span>'
-                    f'</div>'
-                    f'<p class="field-desc">{qparam.get("reason", "")}</p>'
-                    f'</div>'
-                )
-
-        return output
-
-    @classmethod
-    def request_headers(cls, info: RouteInfo) -> str:
-        route_request: RouteRequest | None = info["metadata"].get("request")
-        if not route_request:
-            return ""
-
-        headers: list[RouteHeader] = route_request.get("headers", [])
-        if not headers:
-            return ""
-
-        output = '<h2 class="section-h">Headers</h2>'
-        for header in headers:
-            reason = header.get("reason", "")
-            output += (
-                f'<div class="field-row">'
-                f'<div class="field-top">'
-                f'<span class="field-fname">{header.get("header_key")}</span>'
-                f'<span class="field-req-badge req">REQUIRED</span>'
-                f'<span class="field-type-tag">{header.get("header_value")}</span>'
-                f'</div>'
-                f'{"<p class=field-desc>" + reason + "</p>" if reason else ""}'
-                f'</div>'
-            )
-
-        return output
-
-    @classmethod
-    def request_body(cls, info: RouteInfo) -> str:
-        request: RouteRequest | None = info["metadata"].get("request")
-        if not request:
-            return ""
-
-        model: Type[Model] | None = request.get("body")
-        if not model:
-            return ""
-
-        fields_meta, _ = ModelInspector._inspect_model(model)
-
-        output = f'<h2 class="section-h">Request Body · {model.__name__}</h2>'
-
-        for fname, fmeta in fields_meta.items():
-            is_optional   = fmeta.field_is_optional
-            has_generator = fmeta.field_object.has_generator
-
-            badge_class = "gen" if has_generator else ("opt" if is_optional else "req")
-            badge_label = "GENERATED" if has_generator else ("OPTIONAL" if is_optional else "REQUIRED")
-
-            type_name = fmeta.field_type.__name__ if hasattr(fmeta.field_type, "__name__") else str(fmeta.field_type) # type: ignore
-
-            validators = "".join(
-                f'<span class="validator-tag">{type(v).__name__}()</span>'
-                for v in fmeta.field_object.validators
-            )
-
-            output += (
-                f'<div class="field-row">'
-                f'<div class="field-top">'
-                f'<span class="field-fname">{fname}</span>'
-                f'<span class="field-req-badge {badge_class}">{badge_label}</span>'
-                f'<span class="field-type-tag">{type_name}</span>'
-                f'</div>'
-                f'<div class="field-validators">{validators}</div>'
-                f'</div>'
-            )
-
-        return output
-
-    @classmethod
-    def responses(cls, info: RouteInfo) -> str:
-        responses: list[RouteResponse] | None = info["metadata"].get("responses")
-        if not responses:
-            return ""
-
-        output = '<h2 class="section-h">Responses</h2>'
-
-        for resp in responses:
-            code        = resp.get("status_code", 200)
-            description = resp.get("description", "")
-            example     = resp.get("example")
-
-            color = "#4ade80" if str(code).startswith("2") else \
-                    "#facc15" if str(code).startswith("3") else \
-                    "#fca5a5"
-
-            example_html = ""
-            if example:
-                formatted = json.dumps(example, indent=2)
-                example_html = f'<div class="code-block" style="margin-top:8px;background:var(--surface2);border-radius:6px;padding:12px"><pre>{formatted}</pre></div>'
-
-            output += (
-                f'<div class="field-row">'
-                f'<div class="field-top">'
-                f'<span class="field-fname" style="color:{color}">{code}</span>'
-                f'<span class="field-type-tag">{description}</span>'
-                f'</div>'
-                f'{example_html}'
-                f'</div>'
-            )
-
-        return output
-
-    @classmethod
-    def security(cls, info: RouteInfo) -> str:
+    def security(cls, info: RouteInfo) -> HtmlElement:
         sec: RouteSecurity | None = info["metadata"].get("security")
+        container = div()
         if not sec:
-            return ""
+            return container
 
         scheme = sec.get("scheme")
-        scheme_label = scheme.value if hasattr(scheme, "value") else str(scheme) # type: ignore
-        description  = sec.get("description", "")
+        label  = scheme.value if hasattr(scheme, "value") else str(scheme)  # type: ignore
+        desc   = sec.get("description", "")
 
-        return (
-            f'<h2 class="section-h">Security</h2>'
-            f'<div class="field-row">'
-            f'<div class="field-top">'
-            f'<span class="field-fname">{scheme_label.upper()}</span>'
-            f'<span class="field-req-badge req">REQUIRED</span>'
-            f'</div>'
-            f'{"<p class=field-desc>" + description + "</p>" if description else ""}'
-            f'</div>'
+        pill = (
+            div(class_="security-pill")
+            .append("🔒 ")
+            .append(label.upper())
         )
 
+        section = div(class_="section")
+        section.append(div(class_="section-label").append("Security"))
+        section.append(pill)
+        if desc:
+            section.append(p(class_="field-desc", style="margin-top:8px").append(desc))
+
+        container.append(section)
+        return container
+
     @classmethod
-    def business_logic(cls, info: RouteInfo) -> str:
+    def _params_table(cls, label: str, params: list, badge_class: str, badge_label: str) -> HtmlElement:
+        section = div(class_="section")
+        section.append(div(class_="section-label").append(label))
+
+        table = div(class_="params-table")
+        head  = (
+            div(class_="params-table-head")
+            .append(span().append("Parameter"))
+            .append(span().append("Type"))
+            .append(span().append("Description"))
+        )
+        table.append(head)
+
+        for param in params:
+            name   = param.get("name", "")
+            reason = param.get("reason", "")
+            row = (
+                div(class_="params-table-row")
+                .append(
+                    div()
+                    .append(
+                        div(class_="param-name")
+                        .append(name)
+                        .append(span(class_=f"field-badge {badge_class}").append(badge_label))
+                    )
+                )
+                .append(div().append(span(class_="param-type").append("string")))
+                .append(div().append(p(class_="param-desc").append(reason)))
+            )
+            table.append(row)
+
+        section.append(table)
+        return section
+
+    @classmethod
+    def path_query_params(cls, info: RouteInfo) -> HtmlElement:
+        req          = info["metadata"].get("request")
+        path_params  = req.get("path_params",  []) if req else []
+        query_params = req.get("query_params", []) if req else []
+        container    = div()
+
+        if path_params:
+            container.append(cls._params_table("Path Parameters", path_params, "b-req", "REQUIRED"))
+
+        if query_params:
+            container.append(cls._params_table("Query Parameters", query_params, "b-opt", "OPTIONAL"))
+
+        return container
+
+    @classmethod
+    def request_headers(cls, info: RouteInfo) -> HtmlElement:
+        req     = info["metadata"].get("request")
+        container = div()
+        if not req:
+            return container
+        headers: list[RouteHeader] = req.get("headers", [])
+        if not headers:
+            return container
+
+        section = div(class_="section")
+        section.append(div(class_="section-label").append("Headers"))
+        for h_ in headers:
+            reason = h_.get("reason", "")
+            top    = (
+                div(class_="field-top")
+                .append(span(class_="field-name").append(h_.get("header_key", "")))
+                .append(span(class_="field-type").append(h_.get("header_value", "")))
+                .append(span(class_="field-badge b-req").append("REQUIRED"))
+            )
+            row = div(class_="field-row").append(top)
+            if reason:
+                row.append(p(class_="field-desc").append(reason))
+            section.append(row)
+
+        container.append(section)
+        return container
+
+    @classmethod
+    def request_body(cls, info: RouteInfo) -> HtmlElement:
+        req       = info["metadata"].get("request")
+        container = div()
+        if not req:
+            return container
+        model: Type[Model] | None = req.get("body")
+        if not model:
+            return container
+
+        fields_meta, _ = ModelInspector._inspect_model(model)
+        section = div(class_="section")
+        section.append(div(class_="section-label").append(f"Request Body · {model.__name__}"))
+
+        try:
+            inst    = model.__new__(model)
+            example = getattr(inst, "example", None)
+        except Exception:
+            example = None
+
+        if example:
+            section.append(
+                div(class_="example-wrap")
+                .append(div(class_="example-label").append("Example"))
+                .append(div(class_="example-block").append(json.dumps(example, indent=2)))
+            )
+
+        for fname, fmeta in fields_meta.items():
+            is_opt   = fmeta.field_is_optional
+            is_gen   = fmeta.field_object.has_generator
+            bcls     = "b-gen" if is_gen else ("b-opt" if is_opt else "b-req")
+            blbl     = "GENERATED" if is_gen else ("OPTIONAL" if is_opt else "REQUIRED")
+            tname    = fmeta.field_type.__name__ if hasattr(fmeta.field_type, "__name__") else str(fmeta.field_type)  # type: ignore
+
+            top = (
+                div(class_="field-top")
+                .append(span(class_="field-name").append(fname))
+                .append(span(class_=f"field-badge {bcls}").append(blbl))
+                .append(span(class_="field-type").append(tname))
+            )
+            val_row = div(class_="validator-row")
+            for v in fmeta.field_object.validators:
+                val_row.append(span(class_="validator").append(f"{type(v).__name__}()"))
+
+            section.append(div(class_="field-row").append(top).append(val_row))
+
+        req_examples: dict | None = req.get("examples")  # type: ignore
+        if req_examples:
+            for label_, data in req_examples.items():
+                section.append(
+                    div(class_="example-wrap")
+                    .append(div(class_="example-label").append(label_))
+                    .append(div(class_="example-block").append(json.dumps(data, indent=2)))
+                )
+
+        container.append(section)
+        return container
+
+    @classmethod
+    def responses(cls, info: RouteInfo) -> HtmlElement:
+        resp_list: list[RouteResponse] | None = info["metadata"].get("responses")
+        container = div()
+        if not resp_list:
+            return container
+
+        section = div(class_="section")
+        section.append(div(class_="section-label").append("Responses"))
+
+        for resp in resp_list:
+            code     = resp.get("status_code", 200)
+            desc     = resp.get("description", "")
+            examples = resp.get("examples")
+            cs       = str(code)
+            sclass   = "s2xx" if cs.startswith("2") else "s3xx" if cs.startswith("3") else "s4xx" if cs.startswith("4") else "s5xx"
+
+            row = (
+                div(class_="response-row")
+                .append(
+                    div(class_="response-top")
+                    .append(span(class_=f"response-code {sclass}").append(cs))
+                    .append(span(class_="response-desc").append(desc))
+                )
+            )
+
+            if examples:
+                for lbl, data in examples.items():
+                    row.append(
+                        div(class_="example-wrap")
+                        .append(div(class_="example-label", style="margin-top:10px").append(lbl))
+                        .append(div(class_="example-block").append(json.dumps(data, indent=2)))
+                    )
+
+            section.append(row)
+
+        container.append(section)
+        return container
+
+    @classmethod
+    def business_logic(cls, info: RouteInfo) -> HtmlElement:
         logic: BusinessLogic | None = info["metadata"].get("logic")
+        container = div()
         if not logic:
-            return ""
+            return container
 
-        summary = logic.get("summary", "")
-        notes   = logic.get("notes", "")
-        steps: list[LogicStep] = logic.get("steps", [])
+        summary_text = logic.get("summary", "")
+        notes        = logic.get("notes", "")
+        steps        = logic.get("steps", [])
 
-        steps_html = ""
+        section = div(class_="section")
+        section.append(div(class_="section-label").append("Business Logic"))
+        section.append(p(class_="field-desc", style="margin-bottom:14px").append(summary_text))
+
         for i, step in enumerate(steps):
             how = step.get("how", "")
             why = step.get("why", "")
-            steps_html += (
-                f'<div class="field-row">'
-                f'<div class="field-top">'
-                f'<span class="field-fname">Step {i + 1}</span>'
-                f'<span class="field-type-tag">{step.get("what", "")}</span>'
-                f'</div>'
-                f'{"<p class=field-desc>" + how + "</p>" if how else ""}'
-                f'{"<p class=field-desc style=color:var(--text3)>" + why + "</p>" if why else ""}'
-                f'</div>'
+            body_ = div()
+            body_.append(div(class_="step-what").append(step.get("what", "")))
+            if how:
+                body_.append(div(class_="step-how").append(how))
+            if why:
+                body_.append(div(class_="step-why").append(f"↳ {why}"))
+            section.append(
+                div(class_="logic-step")
+                .append(div(class_="step-num").append(str(i + 1)))
+                .append(body_)
             )
 
-        notes_html = f'<p class="field-desc" style="margin-top:12px;color:var(--text3)">{notes}</p>' if notes else ""
+        if notes:
+            section.append(div(class_="logic-notes").append(f"📝 {notes}"))
 
-        return (
-            f'<h2 class="section-h">Business Logic</h2>'
-            f'<p class="route-desc" style="margin-bottom:16px">{summary}</p>'
-            f'{steps_html}'
-            f'{notes_html}'
-        )
+        container.append(section)
+        return container
 
     @classmethod
-    def depends_on(cls, info: RouteInfo) -> str:
+    def depends_on(cls, info: RouteInfo) -> HtmlElement:
         deps: list[DependsOn] | None = info["metadata"].get("depends_on")
+        container = div()
         if not deps:
-            return ""
+            return container
 
-        output = '<h2 class="section-h">Dependencies</h2>'
+        section = div(class_="section")
+        section.append(div(class_="section-label").append("Dependencies"))
 
         for dep in deps:
             service   = dep.get("service", "")
             reason    = dep.get("reason", "")
             lifecycle = dep.get("lifecycle")
-            lifecycle_label = lifecycle.value if lifecycle and hasattr(lifecycle, "value") else ""
+            lbl       = lifecycle.value if lifecycle and hasattr(lifecycle, "value") else ""
 
-            output += (
-                f'<div class="field-row">'
-                f'<div class="field-top">'
-                f'<span class="field-fname">{service}</span>'
-                f'{"<span class=field-req-badge gen>" + lifecycle_label.upper() + "</span>" if lifecycle_label else ""}'
-                f'</div>'
-                f'{"<p class=field-desc>" + reason + "</p>" if reason else ""}'
-                f'</div>'
-            )
+            inner = div(style="flex:1")
+            inner.append(div(class_="dep-name").append(service))
+            if reason:
+                inner.append(div(class_="dep-reason").append(reason))
 
-        return output
+            card = div(class_="dep-card").append(inner)
+            if lbl:
+                card.append(span(class_="field-badge b-gen").append(lbl.upper()))
+
+            section.append(card)
+
+        container.append(section)
+        return container
 
     @classmethod
-    def try_it_out(cls, info: RouteInfo, id: int) -> str:
-        method  = info.get("method")
-        path    = info.get("path")
-        prefix  = info.get("prefix")
-        request: RouteRequest | None = info["metadata"].get("request")
+    def author_infos(cls, info: RouteInfo) -> HtmlElement:
+        author: Author | None = info["metadata"].get("author")
+        container = div()
+        if not author:
+            return container
+
+        name    = author.get("name", "")
+        email   = author.get("email", "")
+        squad   = author.get("squad", "")
+        team    = author.get("team", "")
+        contact = author.get("contact")
+
+        initials = "".join(w[0].upper() for w in name.split()[:2]) if name else "?"
+        meta_parts = [x for x in [email, squad, team] if x]
+        meta_text  = " · ".join(meta_parts)
+
+        right = div()
+        right.append(div(class_="author-name").append(name))
+        if meta_text:
+            right.append(div(class_="author-meta").append(meta_text))
+        if contact:
+            c = ", ".join(contact) if isinstance(contact, list) else contact
+            right.append(div(class_="author-meta", style="margin-top:3px").append(c))
+
+        section = div(class_="section")
+        section.append(div(class_="section-label").append("Author"))
+        section.append(
+            div(class_="author-card")
+            .append(div(class_="author-avatar").append(initials))
+            .append(right)
+        )
+
+        container.append(section)
+        return container
+
+    @classmethod
+    def try_it_out(cls, info: RouteInfo, id: int) -> HtmlElement:
+        method = info.get("method", "GET")
+        path   = info.get("path", "/")
+        prefix = info.get("prefix", "")
+        req    = info["metadata"].get("request")
+
+        full_path = (prefix.rstrip("/") + "/" + path.lstrip("/")).rstrip("/") or "/"
 
         body_placeholder = ""
-        if request and request.get("body"):
-            model = request["body"] # type: ignore
-            fields_meta, _ = ModelInspector._inspect_model(model)
-            example = {
-                fname: f"<{fmeta.field_type.__name__ if hasattr(fmeta.field_type, '__name__') else 'value'}>" # type: ignore
-                for fname, fmeta in fields_meta.items()
-            }
+        if req and req.get("body"):
+            model = req["body"]  # type: ignore
+            try:
+                inst    = model.__new__(model)
+                example = getattr(inst, "example", None)
+            except Exception:
+                example = None
+            if example is None:
+                fields_meta, _ = ModelInspector._inspect_model(model)
+                example = {
+                    fname: f"<{fmeta.field_type.__name__ if hasattr(fmeta.field_type, '__name__') else 'value'}>"  # type: ignore
+                    for fname, fmeta in fields_meta.items()
+                }
             body_placeholder = json.dumps(example, indent=2)
 
-        textarea_html = ""
+        top = (
+            div(class_="try-top")
+            .append(
+                div(class_="try-top-left")
+                .append(div(class_="try-play-btn").append("▷"))
+                .append(div(class_="try-title").append("Try it out"))
+            )
+            .append(span(class_="try-console-label").append("Interactive"))
+        )
+
+        box = div(class_="try-box").append(top)
+
+        box.append(
+            div(class_="try-body")
+            .append(
+                div(class_="try-path-row")
+                .append(span(class_=f"try-method-chip m-{method}").append(method))
+                .append(
+                    input_(
+                        class_="try-path-input",
+                        id=f"try-path-{id}",
+                        type="text",
+                        value=full_path
+                    )
+                )
+            )
+        )
+
         if method in ("POST", "PUT", "PATCH"):
-            textarea_html = (
-                f'<div class="try-body">'
-                f'<textarea class="try-textarea" id="try-body-{id}">{body_placeholder}</textarea>'
-                f'</div>'
+            box.append(
+                div(class_="try-body")
+                .append(div(class_="try-body-label").append("Request Body"))
+                .append(textarea(class_="try-textarea", id=f"try-body-{id}").append(body_placeholder))
             )
 
-        return (
-            f'<div class="try-section">'
-            f'<div class="try-header">'
-            f'<div class="try-header-left">'
-            f'<div class="try-play">▷</div>'
-            f'<div class="try-title">Try it out</div>'
-            f'</div>'
-            f'<span class="try-subtitle">Interactive Console</span>'
-            f'</div>'
-            f'{textarea_html}'
-            f'<div class="try-footer">'
-            f'<button class="try-execute" id="exec-btn-{id}" onclick="executeRequest(\'{id}\')">'
-            f'Send Request →'
-            f'</button>'
-            f'</div>'
-            f'</div>'
+        box.append(
+            div(class_="try-footer")
+            .append(
+                button(
+                    class_="try-btn",
+                    id=f"exec-btn-{id}",
+                    data_method=method,
+                    onclick=f"executeRequest('{id}')"
+                )
+                .append("Send Request →")
+            )
         )
+
+        box.append(
+            div(class_="try-response", id=f"try-response-{id}", style="display:none")
+            .append(
+                div(class_="try-response-header")
+                .append(span(class_="try-response-status", id=f"try-status-{id}").append(""))
+                .append(span(class_="try-response-time", id=f"try-time-{id}").append(""))
+            )
+            .append(div(class_="try-response-body", id=f"try-response-body-{id}"))
+        )
+
+        return div(class_="section").append(box)
+
+    # ── Code Examples ──────────────────────────────────────────────────────────
 
     @classmethod
-    def feedback(cls, id: int) -> str:
-        return (
-            f'<div class="feedback-row">'
-            f'<span class="feedback-label">Was this helpful?</span>'
-            f'<button class="feedback-btn" id="btn-helpful-{id}" onclick="toggleFeedback(\'{id}\', \'helpful\')">👍 Helpful</button>'
-            f'<button class="feedback-btn" id="btn-issue-{id}"   onclick="toggleFeedback(\'{id}\', \'issue\')">👎 Issue</button>'
-            f'</div>'
-        )
+    def _build_example_payload(cls, req: RouteRequest | None) -> dict | None:
+        if not req or not req.get("body"):
+            return None
+        model = req["body"]  # type: ignore
+        try:
+            inst    = model.__new__(model)
+            example = getattr(inst, "example", None)
+        except Exception:
+            example = None
+        if example is None:
+            fields_meta, _ = ModelInspector._inspect_model(model)
+            example = {
+                fname: f"<{fmeta.field_type.__name__ if hasattr(fmeta.field_type, '__name__') else 'value'}>"  # type: ignore
+                for fname, fmeta in fields_meta.items()
+            }
+        return example
 
     @classmethod
-    def full_panel(cls, info: RouteInfo, id: int) -> str:
-        return (
-            cls.central_panel(info, id)
-            + cls.security(info)
-            + cls.path_query_params(info)
-            + cls.request_headers(info)
-            + cls.request_body(info)
-            + cls.responses(info)
-            + cls.author_infos(info)
-            + cls.business_logic(info)
-            + cls.depends_on(info)
-            + cls.try_it_out(info, id)
-            + cls.feedback(id)
-            + '</div>'
+    def _build_curl(cls, method: str, full_path: str, req: RouteRequest | None, example: dict | None) -> str:
+        lines = [f"curl -X {method} \\"]
+        lines.append(f"  'http://localhost:8080{full_path}' \\")
+
+        # headers from metadata
+        if req and req.get("headers"):
+            for h in req.get("headers", []):
+                lines.append(f"  -H '{h.get('header_key', '')}: {h.get('header_value', '')}' \\")
+
+        # content-type + body
+        if method in ("POST", "PUT", "PATCH") and example:
+            lines.append(f"  -H 'Content-Type: application/json' \\")
+            body_str = json.dumps(example, separators=(",", ": "))
+            lines.append(f"  -d '{body_str}'")
+        else:
+            # strip trailing backslash from last line
+            lines[-1] = lines[-1].rstrip(" \\")
+
+        return "\n".join(lines)
+
+    @classmethod
+    def _build_python(cls, method: str, full_path: str, req: RouteRequest | None, example: dict | None) -> str:
+        lines = ["import requests", ""]
+
+        extra_headers: list[str] = []
+        if req and req.get("headers"):
+            for h in req.get("headers", []):
+                extra_headers.append(f'    "{h.get("header_key", "")}": "{h.get("header_value", "")}"')
+
+        if method in ("POST", "PUT", "PATCH") and example:
+            extra_headers.append('    "Content-Type": "application/json"')
+
+        if extra_headers:
+            lines.append("headers = {")
+            lines.extend([line + "," for line in extra_headers])
+            lines.append("}")
+            lines.append("")
+
+        if method in ("POST", "PUT", "PATCH") and example:
+            lines.append(f"payload = {json.dumps(example, indent=4)}")
+            lines.append("")
+            hdr = ", headers=headers" if extra_headers else ""
+            lines.append(f'response = requests.{method.lower()}(')
+            lines.append(f'    "http://localhost:8080{full_path}",')
+            lines.append(f'    json=payload{hdr}')
+            lines.append(")")
+        else:
+            hdr = ", headers=headers" if extra_headers else ""
+            lines.append(f'response = requests.{method.lower()}(')
+            lines.append(f'    "http://localhost:8080{full_path}"{hdr}')
+            lines.append(")")
+
+        lines.append("")
+        lines.append("print(response.status_code)")
+        lines.append("print(response.json())")
+        return "\n".join(lines)
+
+    @classmethod
+    def _build_node(cls, method: str, full_path: str, req: RouteRequest | None, example: dict | None) -> str:
+        lines = ['// Node.js — fetch API (built-in Node 18+)', ""]
+
+        has_body = method in ("POST", "PUT", "PATCH") and example
+
+        header_entries: list[str] = []
+        if req and req.get("headers"):
+            for h in req.get("headers", []):
+                header_entries.append(f'  "{h.get("header_key", "")}": "{h.get("header_value", "")}"')
+        if has_body:
+            header_entries.append('  "Content-Type": "application/json"')
+
+        lines.append("const response = await fetch(")
+        lines.append(f'  "http://localhost:8080{full_path}",')
+        lines.append("  {")
+        lines.append(f'    method: "{method}",')
+
+        if header_entries:
+            lines.append("    headers: {")
+            lines.extend([line + "," for line in header_entries])
+            lines.append("    },")
+
+        if has_body:
+            lines.append(f"    body: JSON.stringify({json.dumps(example, separators=(',', ': '))}),")
+
+        lines.append("  }")
+        lines.append(");")
+        lines.append("")
+        lines.append("const data = await response.json();")
+        lines.append("console.log(data);")
+        return "\n".join(lines)
+
+    @classmethod
+    def code_examples(cls, info: RouteInfo, id: int) -> HtmlElement:
+        method    = info.get("method", "GET")
+        path      = info.get("path", "/")
+        prefix    = info.get("prefix", "")
+        req       = info["metadata"].get("request")
+        full_path = (prefix.rstrip("/") + "/" + path.lstrip("/")).rstrip("/") or "/"
+
+        example = cls._build_example_payload(req)
+
+        curl   = cls._build_curl(method, full_path, req, example)
+        python = cls._build_python(method, full_path, req, example)
+        node   = cls._build_node(method, full_path, req, example)
+
+        # tab bar
+        tabs = (
+            div(class_="code-tabs")
+            .append(button(class_="code-tab active", data_tab=f"curl-{id}",   onclick=f"switchTab(this,'{id}')").append("cURL"))
+            .append(button(class_="code-tab",        data_tab=f"python-{id}", onclick=f"switchTab(this,'{id}')").append("Python"))
+            .append(button(class_="code-tab",        data_tab=f"node-{id}",   onclick=f"switchTab(this,'{id}')").append("Node.js"))
         )
 
-    @staticmethod
-    def author_infos(info: RouteInfo) -> str:
-        author: Author | None = info['metadata'].get('author')
-        if not author:
-            return ""
+        def code_block(lang_id: str, content: str, visible: bool) -> HtmlElement:
+            wrapper = div(class_="code-example", id=lang_id)
+            if not visible:
+                wrapper = div(class_="code-example", id=lang_id, style="display:none")
+            copy_btn = button(
+                class_="code-copy-btn",
+                data_target=lang_id,
+                onclick=f"copyCode('{lang_id}')"
+            ).append("Copy")
+            block = div(class_="code-example-inner").append(copy_btn).append(
+                pre(class_="code-pre").append(code(class_="code-content").append(content))
+            )
+            wrapper.append(block)
+            return wrapper
 
-        name: str = author.get("name")
-        email: str | None = author.get("email") 
-        contact: str | None = author.get("contact")
-        squad: str | None = author.get("squad") 
-        team: str | None = author.get("team")
+        section = div(class_="section")
+        section.append(div(class_="section-label").append("Code Examples"))
+        box = div(class_="code-examples-box")
+        box.append(tabs)
+        box.append(code_block(f"curl-{id}",   curl,   True))
+        box.append(code_block(f"python-{id}", python, False))
+        box.append(code_block(f"node-{id}",   node,   False))
+        section.append(box)
+        return section
 
-        html: str = f'<div class="author-info">'
-        html += f"<h2>Author</h2>"
-        html += f'<ul>'
-        html += f'<li>{name}</li>'
-        if email:
-            html += f'<li>{email}</li>'
+    # ── Full Panel — two-column layout ────────────────────────────────────────
 
-        if squad:
-            html += f'<li>{squad}</li>'
+    @classmethod
+    def full_panel(cls, info: RouteInfo, id: int, active: bool = False) -> str:
+        panel = cls.central_panel(info, id, active=active)
 
-        if team:
-            html += f'<li>{team}</li>'
+        # left column — documentation
+        left = div(class_="doc-left")
+        left \
+            .append(cls.security(info)) \
+            .append(cls.path_query_params(info)) \
+            .append(cls.request_headers(info)) \
+            .append(cls.request_body(info)) \
+            .append(cls.responses(info)) \
+            .append(cls.author_infos(info)) \
+            .append(cls.business_logic(info)) \
+            .append(cls.depends_on(info))
 
-        if contact:
-            if isinstance(contact, list):
-                contact = ', '.join(contact)
+        # right column — interactive (sticky)
+        right = div(class_="doc-right")
+        right \
+            .append(cls.code_examples(info, id)) \
+            .append(cls.try_it_out(info, id))
 
-            html += f'<li>{contact}</li>'
-
-        html += '</ul>'
-        html += '</div>'
-
-        return html
+        panel.append(div(class_="doc-body").append(left).append(right))
+        return panel.make
 
     @staticmethod
     def find_tag_and_insert(template: str, tag: str, content: str) -> str:

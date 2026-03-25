@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Self, Union
 from html import escape
 
-class HtmlContent(ABC): 
+class HtmlContent(ABC):
     @abstractmethod
     def append(self, content: Union[str,"HtmlContent",None] = None) -> "HtmlContent": ...
 
@@ -10,19 +10,19 @@ class HtmlContent(ABC):
     @abstractmethod
     def make(self) -> str: ...
 
-    def __str__(self) -> str: 
+    def __str__(self) -> str:
         return self.make
 
     def __repr__(self) -> str:
         return self.make
-    
+
 
 class HtmlElement(HtmlContent):
     def __init__(self, tag: str, **attrs):
         self._tag = tag
         self._attrs = self._normalize_attrs(attrs)
         self._content: list[str] = []
-    
+
     def append(self, content: Union[str,"HtmlContent",None] = None) -> Self:
         if content is None:
             return self
@@ -31,9 +31,14 @@ class HtmlElement(HtmlContent):
             self._content.append(content.make)
         else:
             self._content.append(escape(str(content)))
-        
+
         return self
-    
+
+    def extend(self, *children: Union[str, "HtmlContent", None]) -> Self:
+      for child in children:
+          self.append(child)
+      return self
+
     def _normalize_attrs(self, attrs: dict) -> dict:
         normalized = {}
         for key, value in attrs.items():
@@ -51,7 +56,7 @@ class HtmlElement(HtmlContent):
         open_tag = f"<{self._tag}{attrs}>"
         close_tag = f"</{self._tag}>"
         children = "".join(self._content)
-        
+
         return f"{open_tag}{children}{close_tag}"
 
     def pretty(self, indent: int = 0) -> str:
@@ -59,12 +64,12 @@ class HtmlElement(HtmlContent):
         attrs = ""
         if self._attrs:
             attrs = " " + " ".join(
-                f'{k}="{v}"' 
+                f'{k}="{v}"'
                 for k, v in self._attrs.items()
             )
-        
+
         result = f"{spaces}<{self._tag}{attrs}>"
-        
+
         if self._content:
             result += "\n"
             for child in self._content:
@@ -72,7 +77,7 @@ class HtmlElement(HtmlContent):
             result += f"{spaces}</{self._tag}>"
         else:
             result += f"</{self._tag}>"
-        
+
         return result
 
     @property
@@ -95,7 +100,7 @@ class SelfClosingElement(HtmlContent):
         return normalized
 
     def append(self, content: Union[str,"HtmlContent",None] = None) -> Self:
-        raise ValueError(f"<{self._tag}> é auto-fechada e não pode ter filhos")
+        raise ValueError(f"<{self._tag}> is self closed element and cannot append content")
 
     @property
     def make(self) -> str:

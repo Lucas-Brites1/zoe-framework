@@ -1,4 +1,4 @@
-from zoe_doc.doc_metadata import RouteInfo
+from zoe_doc.doc_metadata import RouteInfo, DocMetadata
 from zoe_http.handler import Handler
 from typing import TYPE_CHECKING
 
@@ -9,7 +9,7 @@ class DocRegistry:
   _routes_infos: list[RouteInfo] = []
 
   @classmethod
-  def documentation_metadata(cls, handler: Handler) -> dict | None:
+  def documentation_metadata(cls, handler: Handler) -> DocMetadata | None:
     return getattr(handler, "__zoe_doc__", None) or getattr(getattr(handler, "__zoe_original_handle__", None), "__zoe_doc__", None)
 
   @classmethod
@@ -17,14 +17,14 @@ class DocRegistry:
     infos: list[RouteInfo] = []
 
     for route in router.assigned_routes.routes:
-      doc_metadata: dict | None = cls.documentation_metadata(route.handler)
+      doc_metadata: DocMetadata | None = cls.documentation_metadata(route.handler)
       if doc_metadata is None:
         continue
 
       infos.append(
         RouteInfo(
           method=route.method.value,
-          handler=route.handler,
+          handler=type(route.handler).__name__,
           path=route.endpoint,
           prefix=router.prefix,
           metadata=doc_metadata
