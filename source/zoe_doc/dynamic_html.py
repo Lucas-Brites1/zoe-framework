@@ -23,9 +23,16 @@ class HTMLGen:
         container = div(class_="sidebar-sub", id=f"sub-{group_id}")
         for route in routes:
             container.append(route)
+
+        label = (
+            div(class_="sidebar-section-label", onclick=f"toggleGroup('{group_id}')")
+            .append(span().append(prefix))
+            .append(span(class_="sidebar-chevron").append(i(**{"data-lucide": "chevron-down"})))
+        )
+
         return (
             div()
-            .append(div(class_="sidebar-section-label").append(prefix))
+            .append(label)
             .append(container)
         )
 
@@ -49,7 +56,11 @@ class HTMLGen:
             .append(span(class_="route-path").append(path))
         )
         if deprecated:
-            endpoint_row.append(span(class_="deprecated-badge").append("⚠ DEPRECATED"))
+            endpoint_row.append(
+                span(class_="deprecated-badge")
+                .append(i(**{"data-lucide": "alert-triangle"}))
+                .append(" DEPRECATED")
+            )
         if version:
             endpoint_row.append(span(class_="version-badge").append(version))
 
@@ -82,7 +93,8 @@ class HTMLGen:
 
         pill = (
             div(class_="security-pill")
-            .append("🔒 ")
+            .append(i(**{"data-lucide": "lock"}))
+            .append(" ")
             .append(label.upper())
         )
 
@@ -285,7 +297,7 @@ class HTMLGen:
         section.append(div(class_="section-label").append("Business Logic"))
         section.append(p(class_="field-desc", style="margin-bottom:14px").append(summary_text))
 
-        for i, step in enumerate(steps):
+        for idx, step in enumerate(steps):
             how = step.get("how", "")
             why = step.get("why", "")
             body_ = div()
@@ -293,15 +305,23 @@ class HTMLGen:
             if how:
                 body_.append(div(class_="step-how").append(how))
             if why:
-                body_.append(div(class_="step-why").append(f"↳ {why}"))
+                body_.append(
+                    div(class_="step-why")
+                    .append(i(**{"data-lucide": "corner-down-right"}))
+                    .append(f" {why}")
+                )
             section.append(
                 div(class_="logic-step")
-                .append(div(class_="step-num").append(str(i + 1)))
+                .append(div(class_="step-num").append(str(idx + 1)))
                 .append(body_)
             )
 
         if notes:
-            section.append(div(class_="logic-notes").append(f"📝 {notes}"))
+            section.append(
+                div(class_="logic-notes")
+                .append(i(**{"data-lucide": "file-text"}))
+                .append(f" {notes}")
+            )
 
         container.append(section)
         return container
@@ -401,7 +421,7 @@ class HTMLGen:
             div(class_="try-top")
             .append(
                 div(class_="try-top-left")
-                .append(div(class_="try-play-btn").append("▷"))
+                .append(div(class_="try-play-btn").append(i(**{"data-lucide": "play"})))
                 .append(div(class_="try-title").append("Try it out"))
             )
             .append(span(class_="try-console-label").append("Interactive"))
@@ -432,6 +452,106 @@ class HTMLGen:
                 .append(textarea(class_="try-textarea", id=f"try-body-{id}").append(body_placeholder))
             )
 
+        # ── Auth ──────────────────────────────────────────────────────
+        schemes = [
+            ("none",   "None"),
+            ("bearer", "Bearer"),
+            ("apikey", "API Key"),
+            ("basic",  "Basic"),
+            ("oauth2", "OAuth 2.0"),
+            ("custom", "Custom"),
+        ]
+
+        auth_tabs = div(class_="try-auth-tabs")
+        for idx, (scheme_id, scheme_label) in enumerate(schemes):
+            cls_ = "try-auth-tab active" if idx == 0 else "try-auth-tab"
+            auth_tabs.append(
+                button(class_=cls_, **{"data-scheme": scheme_id},
+                       onclick=f"switchAuthScheme('{id}','{scheme_id}')")
+                .append(scheme_label)
+            )
+
+        # Bearer group
+        auth_bearer = (
+            div(class_="try-auth-group", **{"data-group": "bearer"})
+            .append(
+                div(class_="try-auth-row")
+                .append(span(class_="try-auth-prefix").append("Bearer"))
+                .append(input_(class_="try-auth-input", id=f"try-auth-bearer-token-{id}", type="text", placeholder="token"))
+            )
+        )
+
+        # API Key group
+        auth_apikey = (
+            div(class_="try-auth-group", **{"data-group": "apikey"})
+            .append(
+                div(class_="try-auth-pair")
+                .append(input_(class_="try-auth-input", id=f"try-auth-apikey-name-{id}", type="text", placeholder="X-API-Key", value="X-API-Key"))
+                .append(input_(class_="try-auth-input", id=f"try-auth-apikey-val-{id}",  type="text", placeholder="api-key-value"))
+            )
+        )
+
+        # Basic group
+        auth_basic = (
+            div(class_="try-auth-group", **{"data-group": "basic"})
+            .append(
+                div(class_="try-auth-pair")
+                .append(input_(class_="try-auth-input", id=f"try-auth-basic-user-{id}", type="text",     placeholder="username"))
+                .append(input_(class_="try-auth-input", id=f"try-auth-basic-pass-{id}", type="password", placeholder="password"))
+            )
+        )
+
+        # OAuth2 group
+        auth_oauth2 = (
+            div(class_="try-auth-group", **{"data-group": "oauth2"})
+            .append(
+                div(class_="try-auth-row")
+                .append(span(class_="try-auth-prefix").append("Bearer"))
+                .append(input_(class_="try-auth-input", id=f"try-auth-oauth2-token-{id}", type="text", placeholder="access token"))
+            )
+        )
+
+        # Custom group
+        auth_custom = (
+            div(class_="try-auth-group", **{"data-group": "custom"})
+            .append(
+                div(class_="try-auth-pair")
+                .append(input_(class_="try-auth-input", id=f"try-auth-custom-name-{id}", type="text", placeholder="Header-Name"))
+                .append(input_(class_="try-auth-input", id=f"try-auth-custom-val-{id}",  type="text", placeholder="value"))
+            )
+        )
+
+        auth_container = (
+            div(class_="try-body")
+            .append(div(class_="try-body-label").append("Auth"))
+            .append(
+                div(id=f"try-auth-container-{id}")
+                .append(auth_tabs)
+                .append(auth_bearer)
+                .append(auth_apikey)
+                .append(auth_basic)
+                .append(auth_oauth2)
+                .append(auth_custom)
+            )
+        )
+
+        box.append(auth_container)
+
+        # ── Custom Headers ────────────────────────────────────────────
+        box.append(
+            div(class_="try-body")
+            .append(div(class_="try-body-label").append("Headers"))
+            .append(div(class_="try-headers-list", id=f"try-headers-{id}"))
+            .append(
+                HtmlElement("button",
+                    class_="try-add-header-btn",
+                    onclick=f"addHeader('{id}')"
+                )
+                .append(i(**{"data-lucide": "plus"}))
+                .append(" Add Header")
+            )
+        )
+
         box.append(
             div(class_="try-footer")
             .append(
@@ -441,7 +561,8 @@ class HTMLGen:
                     data_method=method,
                     onclick=f"executeRequest('{id}')"
                 )
-                .append("Send Request →")
+                .append(i(**{"data-lucide": "send"}))
+                .append(" Send Request")
             )
         )
 
@@ -482,18 +603,15 @@ class HTMLGen:
         lines = [f"curl -X {method} \\"]
         lines.append(f"  'http://localhost:8080{full_path}' \\")
 
-        # headers from metadata
         if req and req.get("headers"):
             for h in req.get("headers", []):
                 lines.append(f"  -H '{h.get('header_key', '')}: {h.get('header_value', '')}' \\")
 
-        # content-type + body
         if method in ("POST", "PUT", "PATCH") and example:
             lines.append(f"  -H 'Content-Type: application/json' \\")
             body_str = json.dumps(example, separators=(",", ": "))
             lines.append(f"  -d '{body_str}'")
         else:
-            # strip trailing backslash from last line
             lines[-1] = lines[-1].rstrip(" \\")
 
         return "\n".join(lines)
@@ -582,7 +700,6 @@ class HTMLGen:
         python = cls._build_python(method, full_path, req, example)
         node   = cls._build_node(method, full_path, req, example)
 
-        # tab bar
         tabs = (
             div(class_="code-tabs")
             .append(button(class_="code-tab active", data_tab=f"curl-{id}",   onclick=f"switchTab(this,'{id}')").append("cURL"))
@@ -621,7 +738,6 @@ class HTMLGen:
     def full_panel(cls, info: RouteInfo, id: int, active: bool = False) -> str:
         panel = cls.central_panel(info, id, active=active)
 
-        # left column — documentation
         left = div(class_="doc-left")
         left \
             .append(cls.security(info)) \
@@ -633,7 +749,6 @@ class HTMLGen:
             .append(cls.business_logic(info)) \
             .append(cls.depends_on(info))
 
-        # right column — interactive (sticky)
         right = div(class_="doc-right")
         right \
             .append(cls.code_examples(info, id)) \

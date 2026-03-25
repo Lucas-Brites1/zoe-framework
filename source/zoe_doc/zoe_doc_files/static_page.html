@@ -9,6 +9,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&display=swap"
     rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     *,
     *::before,
@@ -181,8 +182,15 @@
 
     .s-icon {
       color: var(--text3);
-      font-size: 14px;
-      flex-shrink: 0
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+    }
+
+    .s-icon svg {
+      width: 14px;
+      height: 14px;
+      stroke: var(--text3);
     }
 
     .s-kbd {
@@ -259,6 +267,44 @@
       text-transform: uppercase;
       color: rgba(171, 171, 170, .5);
       padding: 20px 16px 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      transition: color .15s;
+    }
+
+    .sidebar-section-label:hover {
+      color: rgba(171, 171, 170, .85)
+    }
+
+    .sidebar-chevron {
+      display: flex;
+      align-items: center;
+      transition: transform .22s ease;
+    }
+
+    .sidebar-chevron svg {
+      width: 10px;
+      height: 10px;
+      stroke: rgba(171, 171, 170, .45);
+    }
+
+    .sidebar-section-label.collapsed .sidebar-chevron {
+      transform: rotate(-90deg)
+    }
+
+    .sidebar-sub {
+      overflow: hidden;
+      max-height: 2000px;
+      opacity: 1;
+      transition: max-height .3s ease, opacity .22s ease;
+    }
+
+    .sidebar-sub.collapsed {
+      max-height: 0;
+      opacity: 0;
     }
 
     .sidebar-route {
@@ -461,6 +507,12 @@
       border: 1px solid rgba(251, 191, 36, .2)
     }
 
+    .deprecated-badge svg {
+      width: 12px;
+      height: 12px;
+      stroke: var(--yellow);
+    }
+
     .version-badge {
       font: 11px var(--mono);
       color: var(--text3);
@@ -655,6 +707,12 @@
       color: var(--purple);
     }
 
+    .security-pill svg {
+      width: 14px;
+      height: 14px;
+      stroke: var(--purple);
+    }
+
     /* ── AUTHOR ───────────────────────────────────────────────── */
     .author-card {
       display: flex;
@@ -733,7 +791,17 @@
       font-size: 12px;
       color: var(--text3);
       margin-top: 2px;
-      font-style: italic
+      font-style: italic;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .step-why svg {
+      width: 12px;
+      height: 12px;
+      stroke: var(--text3);
+      flex-shrink: 0;
     }
 
     .logic-notes {
@@ -743,7 +811,18 @@
       margin-top: 12px;
       padding: 10px 14px;
       border-left: 2px solid var(--bor2);
-      line-height: 1.7
+      line-height: 1.7;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .logic-notes svg {
+      width: 13px;
+      height: 13px;
+      stroke: var(--text3);
+      flex-shrink: 0;
+      margin-top: 2px;
     }
 
     /* ── DEPS ─────────────────────────────────────────────────── */
@@ -1003,7 +1082,6 @@
       display: none
     }
 
-    /* hidden — title stands alone in right panel */
     .try-title {
       font: 700 11px/1 var(--font);
       letter-spacing: .15em;
@@ -1084,6 +1162,209 @@
       box-shadow: 0 0 0 3px rgba(106, 156, 255, .1)
     }
 
+    /* ── TRY AUTH ─────────────────────────────────────────────── */
+    .try-auth-tabs {
+      display: flex;
+      gap: 2px;
+      margin-bottom: 8px;
+      background: var(--sur3);
+      border-radius: 6px;
+      padding: 3px;
+    }
+
+    .try-auth-tab {
+      font: 500 10px var(--font);
+      color: var(--text3);
+      background: none;
+      border: none;
+      padding: 4px 9px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all .12s;
+      white-space: nowrap;
+    }
+
+    .try-auth-tab:hover {
+      color: var(--text2)
+    }
+
+    .try-auth-tab.active {
+      color: var(--text);
+      background: var(--sur2);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+    }
+
+    .try-auth-group {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .try-auth-group.visible {
+      display: flex
+    }
+
+    .try-auth-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg);
+      border: 1px solid var(--bor2);
+      border-radius: 7px;
+      padding: 7px 10px;
+      transition: border-color .14s;
+    }
+
+    .try-auth-row:focus-within {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(192, 132, 252, .1)
+    }
+
+    .try-auth-prefix {
+      font: 600 10px var(--mono);
+      color: var(--purple);
+      white-space: nowrap;
+      flex-shrink: 0;
+      padding-right: 6px;
+      border-right: 1px solid var(--bor2);
+    }
+
+    .try-auth-pair {
+      display: flex;
+      gap: 5px;
+    }
+
+    .try-auth-input {
+      background: var(--bg);
+      border: 1px solid var(--bor2);
+      border-radius: 6px;
+      padding: 6px 9px;
+      font: 12px var(--mono);
+      color: var(--text);
+      outline: none;
+      transition: border-color .14s;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .try-auth-row .try-auth-input {
+      background: none;
+      border: none;
+      border-radius: 0;
+      padding: 0;
+    }
+
+    .try-auth-input:focus {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 2px rgba(192, 132, 252, .1)
+    }
+
+    .try-auth-row .try-auth-input:focus {
+      border: none;
+      box-shadow: none;
+    }
+
+    .try-auth-input::placeholder {
+      color: var(--text3)
+    }
+
+    /* ── TRY CUSTOM HEADERS ───────────────────────────────────── */
+    .try-headers-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 6px;
+    }
+
+    .try-header-pair {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .try-header-input {
+      background: var(--bg);
+      border: 1px solid var(--bor2);
+      border-radius: 6px;
+      padding: 6px 9px;
+      font: 12px var(--mono);
+      color: var(--text);
+      outline: none;
+      transition: border-color .14s;
+      min-width: 0;
+    }
+
+    .try-header-input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px rgba(106, 156, 255, .1)
+    }
+
+    .try-header-input::placeholder {
+      color: var(--text3)
+    }
+
+    .try-header-name {
+      flex: 2
+    }
+
+    .try-header-value {
+      flex: 3
+    }
+
+    .try-remove-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      background: none;
+      border: 1px solid var(--bor2);
+      border-radius: 4px;
+      cursor: pointer;
+      color: var(--text3);
+      flex-shrink: 0;
+      transition: all .12s;
+    }
+
+    .try-remove-btn:hover {
+      color: var(--red);
+      border-color: rgba(248, 113, 113, .3);
+      background: rgba(248, 113, 113, .06)
+    }
+
+    .try-remove-btn svg {
+      width: 11px;
+      height: 11px;
+      stroke: currentColor;
+    }
+
+    .try-add-header-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: none;
+      border: 1px dashed var(--bor2);
+      border-radius: 6px;
+      padding: 5px 10px;
+      font: 500 11px var(--font);
+      color: var(--text3);
+      cursor: pointer;
+      width: 100%;
+      transition: all .12s;
+    }
+
+    .try-add-header-btn:hover {
+      color: var(--text2);
+      border-color: var(--text3);
+      background: rgba(255, 255, 255, .02)
+    }
+
+    .try-add-header-btn svg {
+      width: 12px;
+      height: 12px;
+      stroke: currentColor;
+    }
+
     .try-footer {
       padding: 4px 18px 16px
     }
@@ -1102,6 +1383,12 @@
       align-items: center;
       justify-content: center;
       gap: 7px;
+    }
+
+    .try-btn svg {
+      width: 14px;
+      height: 14px;
+      stroke: var(--bg);
     }
 
     .try-btn:hover {
@@ -1320,7 +1607,7 @@
     </div>
     <div class="nav-right">
       <div class="nav-search">
-        <span class="s-icon">⌕</span>
+        <span class="s-icon"><i data-lucide="search"></i></span>
         <input type="text" id="searchInput" placeholder="Search documentation…" oninput="filterRoutes(this.value)"
           autocomplete="off" />
         <div class="s-kbd"><span class="kbd">⌘</span><span class="kbd">K</span></div>
@@ -1398,6 +1685,41 @@
       });
     }
 
+    function toggleGroup(groupId) {
+      const sub = document.getElementById('sub-' + groupId);
+      const label = sub?.previousElementSibling;
+      if (!sub) return;
+      const collapsing = !sub.classList.contains('collapsed');
+      sub.classList.toggle('collapsed', collapsing);
+      if (label) label.classList.toggle('collapsed', collapsing);
+    }
+
+    function switchAuthScheme(rid, scheme) {
+      const container = document.getElementById('try-auth-container-' + rid);
+      if (!container) return;
+      container.querySelectorAll('.try-auth-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.scheme === scheme);
+      });
+      container.querySelectorAll('.try-auth-group').forEach(g => {
+        g.classList.toggle('visible', g.dataset.group === scheme);
+      });
+    }
+
+    function addHeader(rid) {
+      const list = document.getElementById('try-headers-' + rid);
+      if (!list) return;
+      const pair = document.createElement('div');
+      pair.className = 'try-header-pair';
+      pair.innerHTML = `
+        <input type="text" class="try-header-input try-header-name" placeholder="Header-Name" />
+        <input type="text" class="try-header-input try-header-value" placeholder="value" />
+        <button class="try-remove-btn" onclick="this.closest('.try-header-pair').remove()" title="Remove">
+          <i data-lucide="x"></i>
+        </button>`;
+      list.appendChild(pair);
+      lucide.createIcons({ nodes: [pair] });
+    }
+
     async function executeRequest(rid) {
       const btn = document.getElementById('exec-btn-' + rid);
       const pInp = document.getElementById('try-path-' + rid);
@@ -1406,10 +1728,49 @@
       const sEl = document.getElementById('try-status-' + rid);
       const tEl = document.getElementById('try-time-' + rid);
       const bEl = document.getElementById('try-response-body-' + rid);
+      const authContainer = document.getElementById('try-auth-container-' + rid);
+      const headersList = document.getElementById('try-headers-' + rid);
       if (!btn || !pInp) return;
 
       const method = btn.dataset.method || 'GET';
       const path = pInp.value.trim() || '/';
+
+      const headers = { 'Accept': 'application/json' };
+      if (['POST', 'PUT', 'PATCH'].includes(method)) headers['Content-Type'] = 'application/json';
+
+      // auth
+      if (authContainer) {
+        const activeTab = authContainer.querySelector('.try-auth-tab.active');
+        const scheme = activeTab?.dataset.scheme || 'none';
+        if (scheme === 'bearer') {
+          const t = document.getElementById('try-auth-bearer-token-' + rid)?.value.trim();
+          if (t) headers['Authorization'] = 'Bearer ' + t;
+        } else if (scheme === 'apikey') {
+          const name = document.getElementById('try-auth-apikey-name-' + rid)?.value.trim() || 'X-API-Key';
+          const val = document.getElementById('try-auth-apikey-val-' + rid)?.value.trim();
+          if (val) headers[name] = val;
+        } else if (scheme === 'basic') {
+          const user = document.getElementById('try-auth-basic-user-' + rid)?.value.trim() || '';
+          const pass = document.getElementById('try-auth-basic-pass-' + rid)?.value || '';
+          if (user) headers['Authorization'] = 'Basic ' + btoa(user + ':' + pass);
+        } else if (scheme === 'oauth2') {
+          const t = document.getElementById('try-auth-oauth2-token-' + rid)?.value.trim();
+          if (t) headers['Authorization'] = 'Bearer ' + t;
+        } else if (scheme === 'custom') {
+          const name = document.getElementById('try-auth-custom-name-' + rid)?.value.trim();
+          const val = document.getElementById('try-auth-custom-val-' + rid)?.value.trim();
+          if (name && val) headers[name] = val;
+        }
+      }
+
+      // custom headers
+      if (headersList) {
+        headersList.querySelectorAll('.try-header-pair').forEach(pair => {
+          const name = pair.querySelector('.try-header-name')?.value.trim();
+          const val = pair.querySelector('.try-header-value')?.value.trim();
+          if (name && val) headers[name] = val;
+        });
+      }
 
       btn.classList.add('loading'); btn.textContent = 'Sending…';
       if (rArea) rArea.style.display = 'block';
@@ -1419,7 +1780,7 @@
 
       const t0 = performance.now();
       try {
-        const opts = { method, headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' } };
+        const opts = { method, headers };
         if (bArea && ['POST', 'PUT', 'PATCH'].includes(method)) opts.body = bArea.value;
 
         const res = await fetch(path, opts);
@@ -1446,6 +1807,7 @@
         if (bEl) bEl.textContent = String(e);
       } finally {
         btn.classList.remove('loading'); btn.textContent = 'Send Request →';
+        lucide.createIcons();
       }
     }
 
@@ -1460,6 +1822,7 @@
       }
     });
   </script>
+  <script>lucide.createIcons();</script>
 </body>
 
 </html>
