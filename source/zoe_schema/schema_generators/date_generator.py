@@ -30,9 +30,14 @@ class Date:
     def __init__(self, as_: DateFormat = DateFormat.DATETIME, timezone: datetime.tzinfo | None = None) -> None:
       self.fmt = as_
       self.tz = timezone
+      self._now: datetime.datetime = datetime.datetime.now(self.tz)
 
     def generate(self, *args, **kwargs) -> Any:
-      return self.fmt.convert(datetime.datetime.now(self.tz))
+      return self.fmt.convert(self._now)
+
+    @property
+    def now(self) -> datetime.datetime:
+      return self._now
 
   class Today(FieldGenerator):
     def __init__(self, as_: DateFormat = DateFormat.DATETIME) -> None:
@@ -50,13 +55,17 @@ class Date:
                   seconds: float = 0,
                   microseconds: float = 0,
                   milliseconds: float = 0,
-                  as_: DateFormat = DateFormat.DATETIME
+                  as_: DateFormat = DateFormat.DATETIME,
+                  from_datetime: datetime.datetime | None = None
                 ) -> None:
       self.fmt = as_
       self.delta: datetime.timedelta = datetime.timedelta(
         weeks=weeks, days=days, hours=hours, minutes=minutes,
         seconds=seconds, microseconds=microseconds, milliseconds=milliseconds
         )
+      self._now: datetime.datetime | None = from_datetime
 
     def generate(self, *args, **kwargs) -> Any:
+      if self._now is not None:
+        return self.fmt.convert(self._now + self.delta)
       return self.fmt.convert(datetime.datetime.now() + self.delta)
