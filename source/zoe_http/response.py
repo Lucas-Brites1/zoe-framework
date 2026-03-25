@@ -100,13 +100,18 @@ class Response:
         items=items,
         request=request,
         total=len(items),
-        perpage=per_page, 
+        perpage=per_page,
         filters=filters
         )
 
         return Paginated(
-            items=items, 
-            headers=headers, 
+            items=items,
+            headers=headers,
             http_code=http_code,
             pagination=pagination
             )
+
+    @classmethod
+    def empty(cls) -> "Empty": # type: ignore
+        from zoe_http._response_util.response_empty import Empty
+        return Empty()
