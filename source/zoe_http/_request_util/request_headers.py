@@ -11,10 +11,10 @@ class RequestHeaders:
         self._header_raw: bytes = header_raw
         self._request_line: str
         self._parse()
-        
-        print("Request Headers:")
-        for k, v in self.__headers.items():
-            print(f"{k}:{v}\n")
+
+        #print("Request Headers:")
+        #for k, v in self.__headers.items():
+            #print(f"{k}:{v}\n")
 
     @property
     def values(self) -> dict[str, str]:
@@ -117,31 +117,33 @@ class RequestHeaders:
     def _parse(self) -> None:
         """Parse HTTP headers (skips request line)"""
         self.__headers = {}
-        
+
         try:
             raw_stringfied = self._header_raw.decode(encoding="utf-8", errors="replace")
         except Exception:
             return
-        
+
         lines = raw_stringfied.splitlines()
         self._request_line = lines[0]
 
         for line in lines[1:]:
             line = line.strip()
-            
+
             if not line:
                 continue
-            
+
             key, sep, value = line.partition(":")
-            
+
             if not sep:
                 continue
-            
+
             key = key.strip()
             value = value.strip()
-            
+
             if key.lower() == "cookie":
                 self.__cookies._parse_cookie_line(line=value)
             else:
                 self.__headers[key.lower()] = value
-    
+
+    def __contains__(self, key: str):
+        return self.get(key=key) is not None
