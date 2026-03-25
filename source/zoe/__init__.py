@@ -14,6 +14,7 @@ from zoe_di.singleton import Singleton
 from zoe_di.transient import Transient
 from zoe_di.scoped import Scoped
 from zoe_di.lifecycle import Lifecycle
+from zoe_di.auto_inject import Injectable
 
 # Documentation
 from zoe_doc.doc_metadata import *
@@ -82,6 +83,10 @@ from zoe_middlewares.guard_strategy import GuardStrategy, BearerStrategy, BasicS
 from zoe_middlewares.helmet import Helmet, HelmetCrossOriginEmbedderPolicy, HelmetPermissionsPolicy
 from zoe_middlewares.static_files import StaticFiles
 
+# Auth
+from zoe_jwt.jwt_hs256 import JWT_HS256, JWT_Claim
+from zoe_jwt.token_validator import TokenValidator
+
 # Exceptions
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
 from zoe_exceptions.http_exceptions.exc_not_found import RouteNotFoundException
@@ -91,6 +96,7 @@ from zoe_exceptions.exc_internal_exc import InternalServerException
 from zoe_exceptions.exc_handler_abort import HandlerAbortException
 from zoe_exceptions.schemas_exceptions.exc_base import ErrorCode
 from zoe_exceptions.schemas_exceptions.exc_aggregate import ZoeSchemaAggregateException
+from zoe_jwt.jwt_exceptions import JWTError, InvalidTokenError, ExpiredTokenError, InvalidAlgorithmError, InvalidSignatureError, TokenNotYetValidError
 
 # Environment
 from zoe_env.env import Env
@@ -109,13 +115,15 @@ __all__ = [  # type: ignore
     # Router
     "Router", "Route", "Routes",
     # Schema
-    "Model", "Field", "Strict",
+    "Model", "Field", "Strict", "ComputedField",
     # Dependency Injection
-    "Container", "Box", "Singleton", "Transient", "Scoped", "Lifecycle",
+    "Container", "Box", "Singleton", "Transient", "Scoped", "Injectable", "Lifecycle",
     # Validators
     "FieldValidator", "NotNull", "Range", "Email", "Pattern", "Password", "Min", "Max", "OneOf", "Assert", "Required",
     # Generators
     "FieldGenerator", "Date", "DateFormat", "UUID", "Token", "Slug",
+    # Auth
+    "JWT_HS256", "TokenValidator", "JWT_Claim",
     # Middlewares
     "Logger", "Limiter", "CORS", "BodyLimiter", "Guard", "GuardStrategy",
     "BearerStrategy", "BasicStrategy", "ApiKeyStrategy", "AnyStrategy", "AllStrategy",
@@ -123,7 +131,7 @@ __all__ = [  # type: ignore
     # Exceptions
     "ZoeHttpException", "RouteNotFoundException", "MethodNotAllowedException",
     "NotFoundException", "InternalServerException", "HandlerAbortException",
-    "ErrorCode", "ZoeSchemaAggregateException",
+    "ErrorCode", "ZoeSchemaAggregateException", "JWTError", "InvalidTokenError", "ExpiredTokenError", "InvalidAlgorithmError", "InvalidSignatureError", "TokenNotYetValidError"
     # Documentation
     "doc", "DocMetadata", "Summary", "Author",
     "RouteParam", "RouteHeader", "RouteRequest",
