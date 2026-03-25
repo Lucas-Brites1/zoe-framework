@@ -1,4 +1,4 @@
-from typing import Any, Type
+from typing import Any, Type, TypeVar
 from functools import wraps
 from zoe_di.inspector import Inspector, ObjectKind, CallableInfo, ParamInfo
 from zoe_di.container import Container
@@ -6,6 +6,8 @@ from zoe_exceptions.exc_internal_exc import InternalServerException
 from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from zoe_schema.model_schema import Model
 from enum import Enum
+
+T = TypeVar('T')
 
 class _InjectableBy(Enum):
     NAME = "injectable by name"
@@ -100,7 +102,7 @@ class Injectable:
             '__subclasshook__', '__instancecheck__', '__subclasscheck__'
         })
 
-    def __new__(cls, wrapped: Type):
+    def __new__(cls, wrapped: type[T]) -> type[T]:
         kind: ObjectKind = Inspector.object_kind(wrapped)
         if kind != ObjectKind.CLASS:
             what_was_passed = (
@@ -308,7 +310,7 @@ class Injectable:
                 if param.resolved_by == _InjectableBy.NAME:
                     kwargs[param.name] = Container.resolve(ref=param.name)
                 else:
-                    kwargs[param.name] = Container.resolve(ref=param.infos.param_type)
+                    kwargs[param.name] = Container.resolve(ref=param.infos.param_type) # type: ignore
 
             return original_method(self, *args, **kwargs)
 
