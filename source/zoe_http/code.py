@@ -14,6 +14,7 @@ class HttpCode(Enum):
     CONTINUE = (100, "Continue")
     SWITCHING_PROTOCOLS = (101, "Switching Protocols")
     PROCESSING = (102, "Processing")
+    EARLY_HINTS = (103, "Early Hints")
 
     # --- 2xx Success ---
     OK = (200, "OK")
@@ -23,6 +24,9 @@ class HttpCode(Enum):
     NO_CONTENT = (204, "No Content")
     RESET_CONTENT = (205, "Reset Content")
     PARTIAL_CONTENT = (206, "Partial Content")
+    MULTI_STATUS = (207, "Multi-Status")
+    ALREADY_REPORTED = (208, "Already Reported")
+    IM_USED = (226, "IM Used")
 
     # --- 3xx Redirection ---
     MULTIPLE_CHOICES = (300, "Multiple Choices")
@@ -53,9 +57,11 @@ class HttpCode(Enum):
     RANGE_NOT_SATISFIABLE = (416, "Range Not Satisfiable")
     EXPECTATION_FAILED = (417, "Expectation Failed")
     IM_A_TEAPOT = (418, "I'm a teapot")
+    MISDIRECTED_REQUEST = (421, "Misdirected Request")
     UNPROCESSABLE_ENTITY = (422, "Unprocessable Entity")
     LOCKED = (423, "Locked")
     FAILED_DEPENDENCY = (424, "Failed Dependency")
+    TOO_EARLY = (425, "Too Early")
     UPGRADE_REQUIRED = (426, "Upgrade Required")
     PRECONDITION_REQUIRED = (428, "Precondition Required")
     TOO_MANY_REQUESTS = (429, "Too Many Requests")
