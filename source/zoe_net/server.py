@@ -105,47 +105,37 @@ class Server:
 
                 req_headers = RequestHeaders(header_raw=header_bytes)
                 protocol = ProtocolHandler.detect(headers=req_headers)
-                
+
                 client_ip, _ = writer.get_extra_info("peername")
                 client_request = Request(
                     body_bytes=body_bytes,
                     client_ip=client_ip,
                     headers=req_headers
                 )
-                
+
                 try:
                     should_continue = False
-                    
+
                     if protocol == Protocol.HTTP:
                         handler = HttpProtocol(self.__app, client_request)
                         should_continue = await handler.handle(reader=reader, writer=writer)
 
-                    # 5. Executar handler apropriado
                     elif protocol == Protocol.WEBSOCKET:
-                        # Validar WebSocket
-                        if not self._validate_websocket(headers):
-                            await self._send_400(writer, "Invalid WebSocket handshake")
-                            break
-                        
-                        # Enviar handshake 101
-                        await self._send_websocket_handshake(writer, headers)
-                        
-                        # Criar handler e executar
-                        #handler = WebSocketProtocol()
-                        should_continue = await handler.handle(reader=reader, writer=writer)
-                    
+                        pass
+                        #should_continue = await handler.handle(reader=reader, writer=writer)
+
                     if not should_continue:
                         break
-                
+
                 except ZoeHttpException as exc:
-                    # Enviar resposta de erro HTTP
+                    # HTTP err
                     response = exc.to_response()
                     writer.write(response._build())
                     await writer.drain()
                     break
-                
+
                 except Exception as exc:
-                    # Erro interno
+                    # Internal err
                     response = InternalServerException(detail=str(exc)).to_response()
                     writer.write(response._build())
                     await writer.drain()
