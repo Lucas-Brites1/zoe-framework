@@ -7,6 +7,7 @@ from zoe_http._request_util.request_body import Body
 from zoe_http._request_util.request_multipart import Multipart
 from zoe_http._request_util.request_auth import Auth
 from zoe_http._request_util.request_headers import RequestHeader
+from zoe_http._request_util.request_state import RequestState
 from zoe_exceptions.http_exceptions.exc_malformed_request import MalformedRequestException
 
 class Request:
@@ -44,6 +45,8 @@ class Request:
         self.__auth: Auth = Auth(
             authorization_header=self.headers.authorization
         )
+
+        self.__state: RequestState = RequestState()
 
     @property
     def body(self: "Request") -> Body:
@@ -88,6 +91,10 @@ class Request:
     @property
     def auth(self: "Request") -> Auth:
         return self.__auth
+
+    @property
+    def state(self: "Request") -> RequestState:
+        return self.__state
 
     def set_path_params(self: "Request", params: dict) -> None:
         for k, v in params.items():
