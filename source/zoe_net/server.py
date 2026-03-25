@@ -6,6 +6,9 @@ from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
 from zoe_exceptions.exc_internal_exc import InternalServerException
 from zoe_exceptions.http_exceptions.exc_heavy_payload import PayloadTooLargeException
 from zoe_http.bytes import Bytes
+from zoe_http._request_util.request_headers import RequestHeaders
+from zoe_net.protocols.base import Protocol, ProtocolHandler
+from zoe_net.protocols.http_protocol import HttpProtocol
 import asyncio
 import ssl
 
@@ -18,7 +21,7 @@ class Server:
     def __init__(
             self,
             application: App,
-            host: str = _LOCALHOST,
+            host: str = "0.0.0.0",
             port: int = 8080,
             max_connections: int = 0,
             max_request_size: Bytes = _DEFAULT_MAX_REQUEST_SIZE,
@@ -81,68 +84,76 @@ class Server:
         except asyncio.TimeoutError:
             return None
 
-    def __should_keep_alive(self, header_bytes: bytes) -> bool:
-        raw_data: str = header_bytes.decode("utf-8", errors="replace")
-
-        for line in raw_data.splitlines():
-            if line.lower().startswith("connection:"):
-                return "keep-alive" in line.lower()
-        if "HTTP/1.1" in raw_data.split("\r\n")[0]:
-            return True
-        return False
-
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-      try:
-          while self.__running:
-              try:
-                result: tuple[bytes, bytes] | None = await self.__read_request(reader=reader)
-              except PayloadTooLargeException as exc:
-                  response = exc.to_response()
-                  writer.write(response._build())
-                  await writer.drain()
-                  break
+        try:
+            while self.__running:
+                try:
+                    result = await self.__read_request(reader=reader)
+                    if not result:
+                        break
+                except PayloadTooLargeException as exc:
+                    response = exc.to_response()
+                    writer.write(response._build())
+                    await writer.drain()
+                    break
 
-              if result is None:
-                  break
+                header_bytes, body_bytes = result
 
-              header_bytes, body_bytes = result
+                if not header_bytes:
+                    break
 
-              if not header_bytes:
-                  break
 
-              client_ip, _ = writer.get_extra_info("peername")
-              keep_alive = self.__should_keep_alive(header_bytes)
+                req_headers = RequestHeaders(header_raw=header_bytes)
+                protocol = ProtocolHandler.detect(headers=req_headers)
+                
+                client_ip, _ = writer.get_extra_info("peername")
+                client_request = Request(
+                    body_bytes=body_bytes,
+                    client_ip=client_ip,
+                    headers=req_headers
+                )
+                
+                try:
+                    should_continue = False
+                    
+                    if protocol == Protocol.HTTP:
+                        handler = HttpProtocol(self.__app, client_request)
+                        should_continue = await handler.handle(reader=reader, writer=writer)
 
-              try:
-                  client_request = Request(
-                      body_bytes=body_bytes,
-                      header_bytes=header_bytes,
-                      client_ip=client_ip
-                  )
-                  response = await self.__app._resolve(request=client_request)
-              except ZoeHttpException as exc:
-                  response = exc.to_response()
-              except Exception as exc:
-                  response = InternalServerException(detail=str(exc)).to_response()
+                    # 5. Executar handler apropriado
+                    elif protocol == Protocol.WEBSOCKET:
+                        # Validar WebSocket
+                        if not self._validate_websocket(headers):
+                            await self._send_400(writer, "Invalid WebSocket handshake")
+                            break
+                        
+                        # Enviar handshake 101
+                        await self._send_websocket_handshake(writer, headers)
+                        
+                        # Criar handler e executar
+                        #handler = WebSocketProtocol()
+                        should_continue = await handler.handle(reader=reader, writer=writer)
+                    
+                    if not should_continue:
+                        break
+                
+                except ZoeHttpException as exc:
+                    # Enviar resposta de erro HTTP
+                    response = exc.to_response()
+                    writer.write(response._build())
+                    await writer.drain()
+                    break
+                
+                except Exception as exc:
+                    # Erro interno
+                    response = InternalServerException(detail=str(exc)).to_response()
+                    writer.write(response._build())
+                    await writer.drain()
+                    break
 
-              if keep_alive:
-                  response.headers.add("Connection", "keep-alive")
-                  response.headers.add("Keep-Alive", f"timeout={self._keep_alive_timeout}")
-              else:
-                  response.headers.add("Connection", "close")
-
-              try:
-                  writer.write(response._build())
-                  await writer.drain()
-              except Exception:
-                  break
-
-              if not keep_alive:
-                  break
-
-      finally:
-          writer.close()
-          await writer.wait_closed()
+        finally:
+            writer.close()
+            await writer.wait_closed()
 
     def run(self) -> None:
       try:
@@ -150,13 +161,13 @@ class Server:
       except KeyboardInterrupt:
           pass
 
-    def _application_startup_execs(self) -> None:
+    def _application_setup(self) -> None:
         self.__app._delete_merged_routers()
         self.__app.documentation
 
     async def _start(self) -> None:
       self.__running = True
-      self._application_startup_execs()
+      self._application_setup()
 
       server: asyncio.Server = await asyncio.start_server(
           client_connected_cb=self._handle,
