@@ -1,7 +1,9 @@
 from zoe_http.request import Request
+from zoe_jwt.token_validator import TokenValidator
 from typing import Protocol
+import hmac
 
-#'Bearer', 'Basic', 'ApiKey'
+#'Bearer', 'Basic', 'ApiKey' # ver como funcionma para  implementar jwt e implementar zoe_jwt
 class GuardStrategy(Protocol):
     """
     Protocol (interface) that all Guard strategies must implement.
@@ -36,25 +38,37 @@ class GuardStrategy(Protocol):
         raise NotImplementedError()
 
 class BearerStrategy:
-    def __init__(self: "BearerStrategy", token: str) -> None:
-        self.__bearer_token: str = token
+    def __init__(self: "BearerStrategy", validator: TokenValidator) -> None:
+        self.validator = validator
 
     def guard(self: "BearerStrategy", request: Request) -> bool:
         if request.auth.scheme != "Bearer":
             return False
 
-        return request.auth.bearer_token == self.__bearer_token
+        request_token: str | None = request.auth.bearer_token
+        if not request_token:
+            return False
+
+        try:
+            payload: dict = self.validator.validate(token=request_token)
+            request.state.user = payload
+
+            return True
+        except Exception:
+            return False
 
 class BasicStrategy:
     def __init__(self: "BasicStrategy", username: str, password: str) -> None:
       self.__username = username
       self.__password = password
 
-    def guard(self: "BasicStrategy", request: Request) -> bool:
+    def guard(self, request: Request) -> bool:
       credentials = request.auth.basic_credentials
       if not credentials:
           return False
-      return credentials == (self.__username, self.__password)
+      user_ok = hmac.compare_digest(credentials[0], self.__username)
+      pass_ok = hmac.compare_digest(credentials[1], self.__password)
+      return user_ok and pass_ok
 
 class ApiKeyStrategy:
     def __init__(self: "ApiKeyStrategy", key: str):
