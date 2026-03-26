@@ -109,7 +109,7 @@ __all__ = [  # type: ignore
     # HTTP
     "Request", "Response", "HttpCode", "Handler", "Middleware", "AsyncMiddleware", "HttpMethod", "Hook",
     # HTTP-UTILS
-    "SameSitePolicy", "CookieAttributes", "CookiePair", "Filter", "ResponseCookie"
+    "SameSitePolicy", "CookieAttributes", "CookiePair", "Filter", "ResponseCookie",
     # Upload
     "UploadFile", "Multipart", "Auth",
     # Router
