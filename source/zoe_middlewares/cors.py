@@ -76,5 +76,5 @@ class CORS:
 
         response = await next(request)
         if who_is_allowed:
-            response.add_header(key="Access-Control-Allow-Origin", value=origin or "*")
+            response.add_header(name="Access-Control-Allow-Origin", value=origin or "*")
         return response
