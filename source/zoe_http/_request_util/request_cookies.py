@@ -10,6 +10,11 @@ class RequestCookie:
         key, value = val.split(sep="=", maxsplit=1)
         self.__cookies[key.strip()] = value.strip()
 
+  def get(self, key: str) -> str | None:
+    return self.__cookies[key] or None
+
   def __iter__(self):
     return iter(self.__cookies.items())
 
+  def __contains__(self, key: str):
+    return self.__cookies[key] is not None

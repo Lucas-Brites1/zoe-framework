@@ -131,7 +131,7 @@ __all__ = [  # type: ignore
     # Exceptions
     "ZoeHttpException", "RouteNotFoundException", "MethodNotAllowedException",
     "NotFoundException", "InternalServerException", "HandlerAbortException",
-    "ErrorCode", "ZoeSchemaAggregateException", "JWTError", "InvalidTokenError", "ExpiredTokenError", "InvalidAlgorithmError", "InvalidSignatureError", "TokenNotYetValidError"
+    "ErrorCode", "ZoeSchemaAggregateException", "JWTError", "InvalidTokenError", "ExpiredTokenError", "InvalidAlgorithmError", "InvalidSignatureError", "TokenNotYetValidError",
     # Documentation
     "doc", "DocMetadata", "Summary", "Author",
     "RouteParam", "RouteHeader", "RouteRequest",

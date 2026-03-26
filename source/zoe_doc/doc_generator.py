@@ -38,7 +38,6 @@ class DocGenerator:
       route_elements = []
 
       for info in group_routes:
-        # chave inclui prefix — rotas com mesmo path em routers diferentes ficam distintas
         key    = (info["method"], info["prefix"], info["path"])
         rid    = route_ids[key]
         active = first_overall
@@ -64,7 +63,6 @@ class DocGenerator:
 
     html: str = DocGenerator.__insert_icon()
 
-    # (method, prefix, path) — único por rota mesmo com paths iguais em routers diferentes
     route_ids: dict[tuple, int] = {
       (info["method"], info["prefix"], info["path"]): i
       for i, info in enumerate(routes)

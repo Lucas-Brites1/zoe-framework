@@ -2,6 +2,7 @@ from typing import Any, TYPE_CHECKING
 
 from zoe_http.code import HttpCode
 from zoe_http._response_util.response_header import ResponseHeader
+from zoe_http._response_util.response_cookies import CookiePair, CookieAttributes, ResponseCookie
 
 if TYPE_CHECKING:
     from zoe_http._response_util._pagination import Filter
@@ -12,6 +13,14 @@ class Response:
         self.__http_version: str = "HTTP/1.1"
         self.__status_code = http_code
         self.__response_header: ResponseHeader = ResponseHeader(headers=headers)
+
+    def add_header(self, name: str, value: str) -> "Response":
+        self.headers.add(name, value)
+        return self
+
+    def add_cookie(self, pair: CookiePair, attrs: CookieAttributes | None = None) -> "Response":
+        self.headers.cookies.add(pair, attrs)
+        return self
 
     @property
     def status_code(self) -> HttpCode:
