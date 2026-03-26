@@ -21,7 +21,7 @@ from zoe_doc.doc_metadata import *
 from zoe_doc.doc_generator import doc
 
 # HTTP-Utils
-from zoe_http._response_util.response_cookies import SameSitePolicy, CookieAttributes, CookiePair
+from zoe_http._response_util.response_cookies import SameSitePolicy, CookieAttributes, CookiePair, ResponseCookie
 from zoe_http._response_util._pagination import Filter
 # HTTP
 from zoe_http.request import Request
@@ -109,7 +109,7 @@ __all__ = [  # type: ignore
     # HTTP
     "Request", "Response", "HttpCode", "Handler", "Middleware", "AsyncMiddleware", "HttpMethod", "Hook",
     # HTTP-UTILS
-    "SameSitePolicy", "CookieAttributes", "CookiePair", "Filter",
+    "SameSitePolicy", "CookieAttributes", "CookiePair", "Filter", "ResponseCookie"
     # Upload
     "UploadFile", "Multipart", "Auth",
     # Router

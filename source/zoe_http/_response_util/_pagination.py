@@ -44,15 +44,15 @@ class Pagination:
                 type_=int,
                 default=self._PERPAGE_DEFAULT
             )
-        
+
         if self.perpage > self._PERPAGE_MAX:
             self.perpage = self._PERPAGE_MAX
-        
+
         if self.current_page is None:
             raise MalformedRequestException(
                 detail="Query parameter 'page' is required for paginated responses"
             )
-        
+
         if self.current_page > self.total_pages:
             raise MalformedRequestException(
                 f"Page {self.current_page} does not exist. Maximum page is {self.total_pages}"
@@ -69,7 +69,7 @@ class Pagination:
             postfix += "&" + "&".join(filters_values)
 
         return self.request.route + postfix
-    
+
     def _get_filters_values(self) -> list[str]:
         values: list[str] = []
         if self.filters is None:
@@ -91,7 +91,7 @@ class Pagination:
                 val = val.strip('"').strip("'")
 
             values.append(f"{f.name}={val}")
-        
+
         return values
 
     def _get_applied_filters(self) -> list[dict]:
@@ -101,35 +101,43 @@ class Pagination:
 
     @property
     def _page_index(self) -> int:
-        return self.current_page - 1
+        return self.current_page -1 if self.current_page is not None else 0
 
     @property
-    def current_page(self) -> int:
+    def current_page(self) -> int | None:
         page = self.request.query_params.get(key="page", type_=int)
         if page is None:
             return None
         if page < 1:
             raise MalformedRequestException("Page must be >= 1")
         return page
-            
+
     @property
-    def prev_page(self) -> str | None: 
-        if self.current_page <= 1:
+    def prev_page(self) -> str | None:
+        if self.current_page is None or self.current_page <= 1:
             return None
         return self._build_page_url(page=self.current_page - 1)
 
     @property
     def next_page(self) -> str | None:
+        if self.current_page is None or self.total_pages is None:
+            return None
         if self.current_page >= self.total_pages:
             return None
+
         return self._build_page_url(page=self.current_page + 1)
 
     @property
     def total_pages(self) -> int:
-        return ceil(self.total / self.perpage)
+        if self.total is not None and self.perpage is not None and self.perpage > 0:
+          return ceil(self.total / self.perpage)
+        return 0
 
     @property
     def _iterrange(self) -> tuple[int, int]:
+        if self._page_index is None or self.perpage is None:
+            return (-1, -1)
+
         start: int = self._page_index * self.perpage
         end: int = min(start + self.perpage, self.total)
         return (start, end)
