@@ -232,33 +232,26 @@ class Injectable:
         if kind != ObjectKind.CLASS:
             return {}
 
-        vars_: dict[str, Any] = Inspector.get_annotations(obj=ref)
-        return vars_
+        merged: dict[str, Any] = {}
+        for base in reversed(ref.__mro__):
+            if base is object:
+                continue
+            merged.update(getattr(base, '__annotations__', {}))
+        return merged
 
     @classmethod
     def __analyze_injectable_variables(cls, internal_variables: dict[str, type[Any]]) -> list[_AnalysedVar]:
         analysed_vars: list[_AnalysedVar] = []
+
+        _BUILTINS = (str, int, float, bool, list, dict, set, tuple, type(None))
+
         for name_, type_ in internal_variables.items():
+            if isinstance(type_, str) or (isinstance(type_, type) and type_ not in _BUILTINS):
+                res_by = _InjectableBy.NAME if Container.has(name_) else _InjectableBy.TYPE
 
-            if Container.has(name_):
                 analysed_vars.append(
-                    _AnalysedVar(
-                        var_name=name_,
-                        var_type=type_,
-                        resolved_by=_InjectableBy.NAME
-                    )
+                    _AnalysedVar(var_name=name_, var_type=type_, resolved_by=res_by)
                 )
-                continue
-
-            elif Container.has(type_):
-                analysed_vars.append(
-                    _AnalysedVar(
-                        var_name=name_,
-                        var_type=type_,
-                        resolved_by=_InjectableBy.TYPE
-                    )
-                )
-
 
         return analysed_vars
 
@@ -328,12 +321,12 @@ class Injectable:
 
         @wraps(original_init)
         def new_init(self, *args, **kwargs):
-            original_init(self, *args, **kwargs)
-
             for var in analyzed_vars:
                 if var.resolved_by == _InjectableBy.NAME:
                     setattr(self, var.name, Container.resolve(ref=var.name))
                 else:
                     setattr(self, var.name, Container.resolve(ref=var.type_))
+
+            original_init(self, *args, **kwargs)
 
         target_class.__init__ = new_init
