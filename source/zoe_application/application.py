@@ -22,6 +22,10 @@ class App:
         self.__documentation_generated: bool = False
         self.__application_builtin_handlers()
 
+    def listen(self: "App", host: str = "0.0.0.0", port: int = 8080, **kwargs) -> None:
+        from zoe_net.server import Server
+        Server(application=self, host=host, port=port, **kwargs).run()
+
     def on_startup(self: "App"):
         def callable_wrapper(fn: Callable) -> Callable:
             self.__startup_callables.append(fn)
@@ -104,7 +108,7 @@ class App:
 
         DocGenerator.generate(all_docs)
         self.__documentation_generated = True
-        
+
     @staticmethod
     def _easter_egg() -> None:
         # I don't have a favorite — all three are equally loved.
