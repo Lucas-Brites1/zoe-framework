@@ -5,6 +5,7 @@ from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from zoe_exceptions.exc_non_http_aggregate import ZoeNonHttpAggregate
 from typing import Any, TypeAlias, Type, TypeVar, overload
 from contextvars import ContextVar
+from threading import Lock, local, RLock
 import uuid
 
 T = TypeVar('T')
@@ -15,6 +16,28 @@ class Container:
     __singleton_instances: dict[str, Any] = {}
     __scoped_instances: dict[str, dict[str, Any]] = {}
     __scope: ContextVar[str | None] = ContextVar("scope", default=None)
+    __singleton_lock: RLock = RLock()
+    __resolving_local: local = local()
+
+    @classmethod
+    def __get_resolving(cls) -> set[str]:
+        if not hasattr(cls.__resolving_local, 'keys'):
+            cls.__resolving_local.keys = set()
+        return cls.__resolving_local.keys
+
+    @classmethod
+    def __check_circular(cls, key: str) -> None:
+        resolving = cls.__get_resolving()
+        if key in resolving:
+            chain = ' -> '.join(resolving) + f' -> {key}'
+            raise ZoeNonHttpError(
+                why=f"Circular dependency detected for '{key}'",
+                explain=(
+                    f"'{key}' depends on itself directly or transitively.\n"
+                    f"Resolution chain: {chain}"
+                ),
+                fix="Remove the circular dependency between your services."
+            )
 
     @classmethod
     def provide(cls, box: Box) -> None:
@@ -32,7 +55,6 @@ class Container:
                     f"or use a different key for one of them."
                 )
             )
-
         cls.__registry[key] = box
 
     @classmethod
@@ -47,32 +69,6 @@ class Container:
             return key in cls.__registry
         except ZoeNonHttpError:
             return False
-
-    @classmethod
-    def __get_lookup_key(cls, ref: Keyref) -> str:
-        key_kind = Inspector.object_kind(obj=ref)
-
-        match key_kind:
-            case ObjectKind.PRIMITIVE:
-                if isinstance(ref, str):
-                    return ref
-                raise ZoeNonHttpError(
-                    why=f"Invalid key type '{type(ref).__name__}'",
-                    explain=f"Primitive type '{type(ref).__name__}' cannot be used as a Container key.",
-                    fix="Use a string key instead: Container.resolve('my_key')"
-                )
-            case ObjectKind.CLASS | ObjectKind.FUNC:
-                return ref.__name__  # type: ignore
-
-            case ObjectKind.INSTANCE:
-                return type(ref).__name__
-
-            case _:
-                raise ZoeNonHttpError(
-                    why=f"Cannot determine key for type '{type(ref).__name__}'",
-                    explain=f"The object of type '{type(ref).__name__}' is not a valid Container key.",
-                    fix="Use a class, function, or string as the key."
-                )
 
     @classmethod
     @overload
@@ -95,15 +91,90 @@ class Container:
                 ),
                 fix=(
                     f"Register the dependency before starting the server:\n\n"
-                    f"  @Singleton\n"
+                    f"  @Singleton()\n"
                     f"  class {key}: ...\n\n"
                     f"  or manually:\n"
                     f"  Container.provide_instance({key}(...), key='{key}')"
                 )
             )
 
-        resolved_box: Box = cls.__registry[key]
-        return cls.__resolve_dependency(box=resolved_box, key=key)
+        return cls.__resolve_dependency(box=cls.__registry[key], key=key)
+
+
+    @classmethod
+    def __resolve_dependency(cls, box: Box, key: str) -> Any:
+
+        match box.lifecycle:
+
+            case Lifecycle.PROVIDED:
+                return box.instance
+
+            case Lifecycle.SINGLETON:
+                cached: Any | None = cls.__singleton_instances.get(key, None)
+                if cached is not None:
+                    return cached
+
+                with cls.__singleton_lock:
+                  cached: Any | None = cls.__singleton_instances.get(key, None)
+                  if cached is not None:
+                    return cached
+
+                  cls.__check_circular(key)
+                  cls.__get_resolving().add(key)
+
+                  try:
+                    params, errors = cls.__resolve_constructor_params(box)
+                    if errors:
+                      raise ZoeNonHttpAggregate(errors=errors)
+
+                    instance = cls.__create_instance(box, params)
+                    cls.__singleton_instances[key] = instance
+                  finally:
+                      cls.__get_resolving().discard(key)
+
+                  return cls.__singleton_instances.get(key)
+
+            case Lifecycle.SCOPED:
+                scope_id = cls.__scope.get()
+                if scope_id is None:
+                    raise ZoeNonHttpError(
+                        why="Scoped dependency resolved outside of a request scope",
+                        explain=f"'{key}' is registered as @Scoped but was resolved with no active scope.",
+                        fix="Scoped dependencies can only be resolved during a request."
+                    )
+                cached = cls.__scoped_instances.get(scope_id, {}).get(key)
+                if cached is not None:
+                    return cached
+
+                cls.__check_circular(key)
+                cls.__get_resolving().add(key)
+                try:
+                    params, errors = cls.__resolve_constructor_params(box)
+                    if errors:
+                        raise ZoeNonHttpAggregate(errors=errors)
+                    instance = cls.__create_instance(box, params)
+                    cls.__scoped_instances[scope_id][key] = instance
+                finally:
+                    cls.__get_resolving().discard(key)
+
+                return instance
+
+            case Lifecycle.TRANSIENT:
+                cls.__check_circular(key)
+                cls.__get_resolving().add(key)
+                try:
+                    params, errors = cls.__resolve_constructor_params(box)
+                    if errors:
+                        raise ZoeNonHttpAggregate(errors=errors)
+                    return cls.__create_instance(box, params)
+                finally:
+                    cls.__get_resolving().discard(key)
+
+        raise ZoeNonHttpError(
+            why=f"Unknown lifecycle '{box.lifecycle}' for key '{key}'",
+            explain="The lifecycle registered for this dependency is not supported.",
+            fix="Use @Singleton(), @Transient(), or @Scoped()."
+        )
 
     @classmethod
     def __resolve_constructor_params(cls, box: Box) -> tuple[dict[str, Any], list[ZoeNonHttpError]]:
@@ -118,8 +189,8 @@ class Container:
                 elif Container.has(ref=pvalue.param_type):
                     ptype: Type | None = pvalue.param_type
                     if ptype is not None:
-                      kwargs[pname] = Container.resolve(ptype)
-                      continue
+                        kwargs[pname] = Container.resolve(ptype)
+                        continue
 
                 if pvalue.param_is_required:
                     errors.append(
@@ -138,59 +209,18 @@ class Container:
                             )
                         )
                     )
-                continue
             else:
                 kwargs[pname] = box.provided_params[pname]
 
         return (kwargs, errors)
 
     @classmethod
-    def __resolve_dependency(cls, box: Box, key: str) -> Any:
-        scope_id: Any | None = None
-
-        match box.lifecycle:
-            case Lifecycle.PROVIDED:
-                return box.instance
-            case Lifecycle.SINGLETON:
-                cached: Any = cls.__singleton_instances.get(key)
-                if cached is not None:
-                    return cached
-            case Lifecycle.SCOPED:
-              scope_id = cls.__scope.get()
-              if scope_id is None:
-                  raise ZoeNonHttpError(
-                      why="Scoped dependency resolved outside of a request scope",
-                      explain=f"'{key}' is registered as @Scoped but was resolved with no active scope.",
-                      fix="Scoped dependencies can only be resolved during a request."
-                  )
-              cached = cls.__scoped_instances.get(scope_id, {}).get(key)
-              if cached is not None:
-                  return cached
-
-        params, params_errors = cls.__resolve_constructor_params(box)
-
-        if params_errors:
-            raise ZoeNonHttpAggregate(errors=params_errors)
-
-        dependency: Any = cls.__create_instance(box, params)
-
-        if box.lifecycle is Lifecycle.SINGLETON:
-            cls.__singleton_instances[key] = dependency
-        elif box.lifecycle is Lifecycle.SCOPED:
-            if scope_id is not None:
-              cls.__scoped_instances[scope_id][key] = dependency
-
-        return dependency
-
-    @classmethod
     def __create_instance(cls, box: Box, params: dict[str, Any]) -> Any:
         match box.kind:
             case ObjectKind.CLASS:
                 return box.instance(**params)  # type: ignore
-
             case ObjectKind.FUNC:
                 return box.info.callable_ref(**params)  # type: ignore
-
             case _:
                 raise ZoeNonHttpError(
                     why=f"Cannot create instance for kind '{box.kind}'",
@@ -206,37 +236,78 @@ class Container:
         return scope_id
 
     @classmethod
-    def _close_scope(cls):
-      scope_id = cls.__scope.get()
-      if scope_id and scope_id in cls.__scoped_instances:
-          del cls.__scoped_instances[scope_id]
-      cls.__scope.set(None)
+    def _close_scope(cls) -> None:
+        scope_id = cls.__scope.get()
+        if scope_id and scope_id in cls.__scoped_instances:
+            del cls.__scoped_instances[scope_id]
+        cls.__scope.set(None)
+
+    @classmethod
+    def _warmup_singletons(cls) -> None:
+        with cls.__singleton_lock:
+            for key, box in list(cls.__registry.items()):
+                if box.lifecycle == SINGLETON and key not in cls.__singleton_instances:
+                    cls.__check_circular(key)
+                    cls.__get_resolving().add(key)
+                    try:
+                        params, errors = cls.__resolve_constructor_params(box)
+                        if errors:
+                            raise ZoeNonHttpAggregate(errors=errors)
+                        cls.__singleton_instances[key] = cls.__create_instance(box, params)
+                    finally:
+                        cls.__get_resolving().discard(key)
+
+    @classmethod
+    def reset(cls) -> None:
+        cls.__registry.clear()
+        cls.__singleton_instances.clear()
+        cls.__scoped_instances.clear()
+        cls.__scope.set(None)
+        if hasattr(cls.__resolving_local, 'keys'):
+            cls.__resolving_local.keys.clear()
 
     @classmethod
     def __normalize_box_key(cls, box: Box) -> str:
         if box.key is not None:
             return box.key
-
         if box.object_name:
             return box.object_name
-
         if box.info.callable_name:  # type: ignore
             return box.info.callable_name  # type: ignore
-
         raise ZoeNonHttpError(
             why=f"Cannot determine key for Box with kind '{box.kind}'",
-            explain=f"The Box has no key, object_name, or callable_name to use as a registry key.",
-            fix=(
-                f"Provide an explicit key when registering:\n\n"
-                f"  Container.provide_instance(my_obj, key='my_key')"
-            )
+            explain="The Box has no key, object_name, or callable_name to use as a registry key.",
+            fix="Provide an explicit key: Container.provide_instance(my_obj, key='my_key')"
         )
+
+    @classmethod
+    def __get_lookup_key(cls, ref: Keyref) -> str:
+        key_kind = Inspector.object_kind(obj=ref)
+
+        match key_kind:
+            case ObjectKind.PRIMITIVE:
+                if isinstance(ref, str):
+                    return ref
+                raise ZoeNonHttpError(
+                    why=f"Invalid key type '{type(ref).__name__}'",
+                    explain=f"Primitive type '{type(ref).__name__}' cannot be used as a Container key.",
+                    fix="Use a string key instead: Container.resolve('my_key')"
+                )
+            case ObjectKind.CLASS | ObjectKind.FUNC:
+                return ref.__name__  # type: ignore
+            case ObjectKind.INSTANCE:
+                return type(ref).__name__
+            case _:
+                raise ZoeNonHttpError(
+                    why=f"Cannot determine key for type '{type(ref).__name__}'",
+                    explain=f"The object of type '{type(ref).__name__}' is not a valid Container key.",
+                    fix="Use a class, function, or string as the key."
+                )
 
     @classmethod
     def __resolve_key(cls, ref: Keyref) -> str:
         if isinstance(ref, Box):
             return cls.__normalize_box_key(box=ref)
-
         if isinstance(ref, str):
             return ref
 
@@ -245,17 +316,14 @@ class Container:
         match kind:
             case ObjectKind.FUNC | ObjectKind.CLASS:
                 return ref.__name__
-
             case ObjectKind.INSTANCE:
                 return type(ref).__name__
-
             case ObjectKind.PRIMITIVE:
                 raise ZoeNonHttpError(
                     why=f"Primitive type '{type(ref).__name__}' cannot be used as Container key",
                     explain=f"Values of type '{type(ref).__name__}' are not valid Container keys.",
                     fix="Use a string key instead: Container.resolve('my_key')"
                 )
-
             case _:
                 raise ZoeNonHttpError(
                     why=f"Cannot resolve key for unknown type '{type(ref).__name__}'",
