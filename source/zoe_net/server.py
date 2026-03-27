@@ -9,6 +9,7 @@ from zoe_http.bytes import Bytes
 from zoe_http._request_util.request_headers import RequestHeaders
 from zoe_net.protocols.base import Protocol, ProtocolHandler
 from zoe_net.protocols.http_protocol import HttpProtocol
+from zoe_di.container import Container
 import asyncio
 import ssl
 
@@ -154,6 +155,7 @@ class Server:
     def _application_setup(self) -> None:
         self.__app._delete_merged_routers()
         self.__app.documentation
+        Container._warmup_singletons()
 
     async def _start(self) -> None:
       self.__running = True
