@@ -9,6 +9,7 @@ from zoe_http._request_util.request_auth import Auth
 from zoe_http._request_util.request_headers import RequestHeaders
 from zoe_http._request_util.request_state import RequestState
 from zoe_exceptions.http_exceptions.exc_malformed_request import MalformedRequestException
+from zoe_schema.schema_generators.uuid_generator import UUID
 
 class Request:
     def __init__(self: "Request", headers: RequestHeaders, body_bytes: bytes, client_ip: str) -> None:
@@ -43,7 +44,7 @@ class Request:
             authorization_header=self.headers.authorization
         )
 
-        self.__state: RequestState = RequestState()
+        self.__state: RequestState = RequestState(self._initial_states())
 
     @property
     def body(self: "Request") -> Body:
@@ -70,10 +71,6 @@ class Request:
         return self.__http_version
 
     @property
-    def client_ip(self: "Request") -> str:
-        return self.__client_ip
-
-    @property
     def path_params(self: "Request") -> PathParams:
         return self.__path_params
 
@@ -92,6 +89,16 @@ class Request:
     @property
     def state(self: "Request") -> RequestState:
         return self.__state
+
+    def _initial_states(self: "Request") -> dict:
+        from time import perf_counter
+        states: dict = {}
+        states["request_id"] = UUID().generate()
+        states["request_started_at"] = perf_counter()
+        states["request_client_ip"] = self.__client_ip
+        states["request_path"] = self.__route
+        states["request_method"] = self.__method
+        return states
 
     def set_path_params(self: "Request", params: dict) -> None:
         for k, v in params.items():

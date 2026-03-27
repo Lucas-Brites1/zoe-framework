@@ -1,8 +1,10 @@
 from typing import Any
 
 class RequestState:
-    def __init__(self):
+    def __init__(self, initial: dict[str, Any] | None = None):
         super().__setattr__("_states", {})
+        if initial:
+            self._states.update(initial)
 
     def __setattr__(self, name: str, value: Any):
         self._states[name] = value
