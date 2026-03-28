@@ -27,10 +27,10 @@ class UploadFile:
   def file_type(self: "UploadFile") -> str:
     return self.__type
 
-  def save(self, path: str, froom_root: bool, filename: str | None = None, create_dirs: bool = False) -> Path | None:
+  def save(self, path: str, from_root: bool, filename: str | None = None, create_dirs: bool = False) -> Path | None:
     filename_to_save = filename or self.filename
     directory_path: Path = Path(path)
-    if froom_root:
+    if from_root:
       directory_path = ROOT / directory_path
 
     if not directory_path.exists():
