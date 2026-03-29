@@ -27,7 +27,7 @@ class WebsocketProtocol(ProtocolHandler):
         finally:
             writer.close()
 
-        return True
+        return False
 
     @property
     def handshake(self) -> bool:
@@ -39,27 +39,37 @@ class WebsocketProtocol(ProtocolHandler):
 
         for name, expected in required_headers.items():
             value: str = self._headers.get(key=name) or ""
-            if value not in expected:
+            if value.lower() != expected:
                 return False
 
         return 'sec-websocket-key' in self._headers
 
     async def establish_handshake(self, writer: StreamWriter) -> None:
         if not self.handshake:
+            # faltam headers para aceitar conexao websocket
             raise ValueError # só template depois mudar para exceção específica do protoclo websocket que vou criar
 
-        key: str = self.resolve_key()
+        key: str | None = self._build_accept_key()
+        if key is None:
+            # websocket key inválida...
+            raise ValueError # template, isso tem que levantar um erro
+
         response: bytes = self.switching_protocol_response(key)
         writer.write(response)
         await writer.drain()
 
-    def resolve_key(self) -> str:
-        key: str = self._headers.get('sec-websocket-key') or ""
+    def _build_accept_key(self) -> str | None:
+        key: str | None = self._headers.get('sec-websocket-key')
+        if key is None:
+            return None
+
         key += WebsocketProtocol.MAGIC_GUID_RFC
+
         bkey: bytes = key.encode(encoding="utf-8", errors="replace")
         SHA1_key: bytes =  hashlib.sha1(bkey).digest()
         response_b64: bytes = base64.b64encode(SHA1_key)
         response: str = response_b64.decode(encoding="utf-8", errors="replace")
+
         return response
 
     def switching_protocol_response(self, key: str) -> bytes:
