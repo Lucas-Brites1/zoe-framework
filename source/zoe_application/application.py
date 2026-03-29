@@ -6,10 +6,13 @@ from zoe_http.middleware import Middleware
 from zoe_doc.doc_generator import DocGenerator
 from zoe_doc.doc_registry import DocRegistry
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
+from zoe_exceptions.http_exceptions.exc_domain import DomainException
+from zoe_error_handler.error_handler_protocol import ErrorHandler
+from zoe_error_handler.registry import DomainErrorDispatcher
 from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from zoe_exceptions.exc_internal_exc import InternalServerException
 from zoe_exceptions.http_exceptions.exc_not_found import RouteNotFoundException
-from typing import Callable
+from typing import Callable, cast, Awaitable
 import inspect
 
 class App:
@@ -75,14 +78,34 @@ class App:
                 return m.process(req, p)
 
         try:
-            return await chain(request) # type: ignore
+            return await cast(Awaitable[Response], chain(request))
+
         except ZoeNonHttpError as non_http_exc:
             return InternalServerException.from_non_http_error(
                 error=non_http_exc,
                 request=request
             ).to_response()
+
+        except DomainException as dexc:
+          handler_error: ErrorHandler | None = DomainErrorDispatcher .resolve(exc=dexc)
+
+          if handler_error is not None:
+            if inspect.iscoroutinefunction(handler_error):
+                return await cast(
+                    Awaitable[Response],
+                    handler_error(exception=dexc, request=request)
+                    )
+
+            return cast(
+                Response,
+                handler_error(exception=dexc, request=request)
+                )
+
+          return dexc.to_response(request)
+
         except ZoeHttpException as exc:
             return exc.to_response()
+
         except Exception as exc:
             return InternalServerException(detail=str(exc)).to_response()
 
