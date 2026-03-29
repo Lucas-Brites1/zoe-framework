@@ -87,8 +87,13 @@ from zoe_middlewares.static_files import StaticFiles
 from zoe_jwt.jwt_hs256 import JWT_HS256, JWT_Claim
 from zoe_jwt.token_validator import TokenValidator
 
+# Errors
+from zoe_error_handler.error_handler_protocol import ErrorHandler
+from zoe_error_handler.on_error import on_error
+
 # Exceptions
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
+from zoe_exceptions.http_exceptions.exc_domain import DomainException
 from zoe_exceptions.http_exceptions.exc_not_found import RouteNotFoundException
 from zoe_exceptions.http_exceptions.exc_not_allowed import MethodNotAllowedException
 from zoe_exceptions.http_exceptions.exc_resource_not_found import NotFoundException
@@ -128,8 +133,10 @@ __all__ = [  # type: ignore
     "Logger", "Limiter", "CORS", "BodyLimiter", "Guard", "GuardStrategy",
     "BearerStrategy", "BasicStrategy", "ApiKeyStrategy", "AnyStrategy", "AllStrategy",
     "Helmet", "HelmetCrossOriginEmbedderPolicy", "HelmetPermissionsPolicy", "StaticFiles",
+    # Errors Handler
+    "ErrorHandler","on_error",
     # Exceptions
-    "ZoeHttpException", "RouteNotFoundException", "MethodNotAllowedException",
+    "ZoeHttpException", "DomainException", "RouteNotFoundException", "MethodNotAllowedException",
     "NotFoundException", "InternalServerException", "HandlerAbortException",
     "ErrorCode", "ZoeSchemaAggregateException", "JWTError", "InvalidTokenError", "ExpiredTokenError", "InvalidAlgorithmError", "InvalidSignatureError", "TokenNotYetValidError",
     # Documentation
