@@ -169,7 +169,7 @@ class _Printer:
             cls._blank(color, width)
             cls._row("method", request.method.value, _C.GRAY, _C.YELLOW, color, width)
             cls._row("route",  request.route,        _C.GRAY, _C.WHITE,  color, width)
-            cls._row("client", request.client_ip,    _C.GRAY, _C.WHITE,  color, width)
+            cls._row("client", request.state.get("client_ip"),    _C.GRAY, _C.WHITE,  color, width)
 
         if isinstance(error, ZoeNonHttpAggregate):
             for i, e in enumerate(error.errors, 1):
@@ -213,7 +213,7 @@ class _Printer:
             cls._blank(color, width)
             cls._row("method", request.method.value, _C.GRAY, _C.YELLOW, color, width)
             cls._row("route",  request.route,        _C.GRAY, _C.WHITE,  color, width)
-            cls._row("client", request.client_ip,    _C.GRAY, _C.WHITE,  color, width)
+            cls._row("client", request.state.get("client_ip"),    _C.GRAY, _C.WHITE,  color, width)
 
         cls._blank(color, width)
         cls._divider(color, width)
