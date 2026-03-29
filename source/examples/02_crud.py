@@ -99,7 +99,10 @@ class GetUserHandler(Handler):
     def handle(self, request: Request) -> Response:
         # Path params are accessible via self.request.path_params
         # Since the route is "/users/{user_id}", Zoe extracts {user_id} automatically.
-        user_id: int = int(request.path_params.user_id)
+        user_id: int | None = request.path_params.get("user_id", type_=int)
+        if user_id is None:
+            raise
+
         user: UserModel | None = _users.get(user_id, None)
 
         if not user:
@@ -110,26 +113,9 @@ class GetUserHandler(Handler):
 
         return Response.json(http_code=HttpCode.OK, body={"data": user})
 
-#REMOVER DEPOIS
-from zoe import Container, Box
-class Database:
-  def __init__(self, host: str = "127.0.0.1"):
-    self.host = host
-
-  def print_daora(self):
-    print("Daora")
-Container.provide_instance(obj=Database(), key="db")
-
-teste_router: Router = Router(prefix="/teste")
-@teste_router.get(endpoint="/hello-world")
-def hello(request: Request, db: Box) -> Response: # ele ta passando como box não como o tipo real.. ver isso depois la no handler invoker na hora de injetar
-    db.instance.print_daora()
-    return Response.text(body="legal", http_code=HttpCode.OK)
-#REMOVER ATÉ AQUI
-
 class DeleteUserHandler:
     def handle(self, request: Request) -> Response:
-        user_id: int = int(request.path_params.user_id)
+        user_id: int = request.path_params.get("user_id", type_=int, default=1)
 
         if user_id not in _users:
             return Response.json(
@@ -162,17 +148,12 @@ if __name__ == "__main__":
         .get("/{user_id}", GetUserHandler()) \
         .delete("/{user_id}", DeleteUserHandler())
 
-    from zoe import Limiter, ZoeMetadata
-    ZoeMetadata.enable_debug()
-    app.use(user_router).use(Logger(application_name="My-App", verbose=False)).use(Limiter(max_requests=5, window_seconds=15))
+    app.use(user_router).use(Logger(application_name="My-App", verbose=False))
 
     # Try these requests:
     #   POST   http://127.0.0.1:7777/users/      request_body: {"login": "lucas", "password": "123", "email": "lucas@zoe.dev"}
     #   GET    http://127.0.0.1:7777/users/
     #   GET    http://127.0.0.1:7777/users/1
     #   DELETE http://127.0.0.1:7777/users/1
-    from zoe import ZoeMetadata as zm # REMOVER AQUI
-    zm.enable_debug() # REMOVER AQUI
-    app.use(teste_router) #REMOVER AQUI
     server.run()
 
