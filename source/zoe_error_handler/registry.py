@@ -43,9 +43,12 @@ class DomainErrorDispatcher:
 
   @classmethod
   def resolve(cls, exc: Exception) -> ErrorHandler | None:
+    with cls._rlock:
+       handlers: list[tuple[type[DomainException], ErrorHandler]] = cls._handlers.copy()
+
     candidates = [
         (matcher, handler)
-        for matcher, handler in cls._handlers
+        for matcher, handler in handlers
         if cls._matches(matcher, exc)
     ]
 
