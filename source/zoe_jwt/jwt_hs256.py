@@ -26,7 +26,7 @@ def b64url_decode(data: str) -> bytes:
     return base64.urlsafe_b64decode(data + padding)
 
 
-ValueValidator =  Callable[[Any], bool]
+ValueValidator = Callable[[Any], bool]
 
 class JWT_Claim:
     def __init__(self,
@@ -40,14 +40,14 @@ class JWT_Claim:
 
     def validate(self, payload: dict):
         if self._key not in payload:
-          raise InvalidTokenError(f"Missing claim: {self._key}")
+            raise InvalidTokenError(f"Missing claim: {self._key}")
 
         if self._validator is not None:
-          if not self._validator(payload[self._key]):
-            raise InvalidTokenError(f"Claim '{self._key}' not pass after validation call")
+            if not self._validator(payload[self._key]):
+                raise InvalidTokenError(f"Claim '{self._key}' not pass after validation call")
 
         elif payload[self._key] != self._value:
-          raise InvalidTokenError(f"Invalid claim '{self._key}'")
+            raise InvalidTokenError(f"Invalid claim '{self._key}'")
 
     @staticmethod
     def from_claims(claims: list["JWT_Claim"]) -> dict:
@@ -94,7 +94,8 @@ class JWT_HS256(TokenValidator):
             full_payload["exp"] = Date.After(
                 minutes=self._expires_min,
                 as_=DateFormat.UNIX_TIMESTAMP,
-                from_datetime=date.now).generate()
+                from_datetime=date.now
+            ).generate()
 
         if "jti" not in full_payload:
             full_payload["jti"] = UUID().generate()
@@ -143,7 +144,7 @@ class JWT_HS256(TokenValidator):
         header_b64, payload_b64, signature_b64 = parts
 
         try:
-            header = loads(b64url_decode(header_b64))
+            header = loads(b64url_decode(header_b64).decode("utf-8"))
         except Exception:
             raise InvalidTokenError("Invalid header encoding")
 
@@ -160,25 +161,29 @@ class JWT_HS256(TokenValidator):
         expected_b64 = b64url_encode(expected_signature)
 
         if not hmac.compare_digest(signature_b64, expected_b64):
-            raise InvalidSignatureError("Signature mismatch")
+            raise InvalidSignatureError("Invalid token")
 
         try:
-            payload = loads(b64url_decode(payload_b64))
+            payload = loads(b64url_decode(payload_b64).decode("utf-8"))  # FIX: faltava .decode("utf-8")
         except Exception:
             raise InvalidTokenError("Invalid payload encoding")
 
         iss: str | None = payload.get("iss", None)
 
         if iss is None:
-          raise MissingIssuerError()
+            raise MissingIssuerError()
         elif iss != self._issued_by:
-          raise UntrustedIssuerError()
+            raise UntrustedIssuerError()
 
         if self._audience is not None:
-          aud: list[str] = payload.get("aud", [])
+            aud = payload.get("aud", [])
 
-          if not any(service in self._audience for service in aud):
-              raise UnauthorizedAudienceError()
+            # FIX: normaliza aud para lista (JWT spec permite string ou lista)
+            if isinstance(aud, str):
+                aud = [aud]
+
+            if not any(service in self._audience for service in aud):
+                raise UnauthorizedAudienceError()
 
         return payload
 
