@@ -1,15 +1,16 @@
 from typing import Any, Callable, Type, Optional, TypeVar
 from zoe_doc.doc_metadata import *
 from zoe_doc.dynamic_html import HTMLGen
-from zoe_http._file_util import FileUtil, ROOT, Path
+from zoe_http._file_util import FileUtil, Path
 from zoe_exceptions.exc_internal_exc import InternalServerException, ZoeNonHttpError
 import base64
 
 T = TypeVar('T')
 
 class DocGenerator:
-  _TEMPLATE_PATH: Path = Path(FileUtil.mount_path("source", "zoe_doc", "zoe_doc_files") / "static_page.html")
-  _OUTPUT_PATH:   Path = Path(FileUtil.mount_path("source", "zoe_doc", "zoe_doc_files") / "generated_docs.html")
+  _TEMPLATE_PATH: Path = FileUtil.FRAMEWORK_DIR.joinpath("zoe_doc", "zoe_doc_files") / "static_page.html"
+  print(_TEMPLATE_PATH)
+  _OUTPUT_PATH:   Path = FileUtil.FRAMEWORK_DIR.joinpath("zoe_doc", "zoe_doc_files") / "generated_docs.html"
 
   @staticmethod
   def __get_html_template() -> str:

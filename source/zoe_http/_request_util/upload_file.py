@@ -1,5 +1,5 @@
 from zoe_http._file_util import FileUtil
-from zoe_http._file_util import ROOT, Path
+from zoe_http._file_util import Path
 import uuid
 class UploadFile:
   def __init__(self: "UploadFile", filename: str, type: str, data_bytes: bytes) -> None:
@@ -31,7 +31,7 @@ class UploadFile:
     filename_to_save = filename or self.filename
     directory_path: Path = Path(path)
     if from_root:
-      directory_path = ROOT / directory_path
+      directory_path = FileUtil.BASE_DIR / directory_path
 
     if not directory_path.exists():
       if create_dirs:
