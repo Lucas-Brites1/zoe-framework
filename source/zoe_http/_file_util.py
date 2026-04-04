@@ -1,61 +1,52 @@
 from pathlib import Path
+import sys
 
 class FileUtil:
-    @staticmethod
-    def root_path() -> str:
-      return str(Path(__file__).parent.parent.parent)
+    BASE_DIR: Path = Path(sys.argv[0]).resolve().parent if (sys.argv and sys.argv[0]) else Path.cwd()
+    WORKING_DIR: Path = Path.cwd()
+    FRAMEWORK_DIR: Path = Path(__file__).resolve().parent.parent
 
     @staticmethod
-    def create_directory(directory: Path) -> None:
-      directory.mkdir(parents=True, exist_ok=True)
+    def mount_path(*segments: str, start_from: Path = BASE_DIR) -> Path:
+        path = start_from
+        for segment in segments:
+            path = path / segment.strip("/\\")
+        return path
 
     @staticmethod
-    def mount_path(*dirs: str, from_root: bool = True) -> Path:
-      path = Path(ROOT) if from_root else Path(dirs[0])
-      start = 0 if not from_root else 0
-      for d in dirs:
-        path = path / d.strip("/")
-      return path
-
-    @staticmethod
-    def find(filename: str, directory: str | Path | None = None) -> Path | None:
-      if directory:
-        full_path = (Path(directory) / filename).resolve()
-        abs_directory = Path(directory).resolve()
-        if not str(full_path).startswith(str(abs_directory)):
-            return None
-        return full_path if full_path.exists() else None
-      else:
-        current = Path.cwd()
+    def find_upwards(filename: str, start_dir: Path = WORKING_DIR) -> Path | None:
+        current = start_dir.resolve()
         while True:
-            candidate = (current / filename).resolve()
+            candidate = current / filename
             if candidate.exists():
                 return candidate
+
             parent = current.parent
             if parent == current:
                 return None
             current = parent
 
     @staticmethod
-    def resolve_path(directory: str, filename: str) -> Path:
-        return Path(directory) / filename
+    def read_internal(relative_path_from_zoe: str) -> bytes | None:
+        full_path = FileUtil.mount_path(relative_path_from_zoe, start_from=FileUtil.FRAMEWORK_DIR)
+        return FileUtil.read(full_path)
 
+    @staticmethod
+    def create_directory(directory: Path) -> None:
+        directory.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     def write(path: Path, bytes_: bytes) -> bool:
         try:
-            with open(path, "wb") as f:
-                f.write(bytes_)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(bytes_)
             return True
-        except Exception as e:
+        except Exception:
             return False
 
     @staticmethod
     def read(path: Path) -> bytes | None:
         try:
-            with open(path, "rb") as f:
-                return f.read()
-        except FileNotFoundError:
+            return path.read_bytes()
+        except (FileNotFoundError, PermissionError):
             return None
-
-ROOT = FileUtil.root_path()
