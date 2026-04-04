@@ -35,7 +35,7 @@ from zoe_http.bytes import Bytes
 from zoe_http.hooks import Hook
 
 # File Utils
-from zoe_http._file_util import FileUtil, ROOT
+from zoe_http._file_util import FileUtil
 from pathlib import Path
 
 # Upload
@@ -108,7 +108,7 @@ from zoe_env.env import Env
 
 __all__ = [  # type: ignore
     # Utils
-    "Bytes", "ZoeMetadata", "Env", "FileUtil", "ROOT", "Path",
+    "Bytes", "ZoeMetadata", "Env", "FileUtil", "Path",
     # Core
     "App", "Server",
     # HTTP
