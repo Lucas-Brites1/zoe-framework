@@ -10,7 +10,7 @@ T = TypeVar('T')
 class DocGenerator:
   _TEMPLATE_PATH: Path = FileUtil.FRAMEWORK_DIR.joinpath("zoe_doc", "zoe_doc_files") / "static_page.html"
   print(_TEMPLATE_PATH)
-  _OUTPUT_PATH:   Path = FileUtil.FRAMEWORK_DIR.joinpath("zoe_doc", "zoe_doc_files") / "generated_docs.html"
+  _OUTPUT_PATH: Path = FileUtil.WORKING_DIR / "docs" / "generated_docs.html"
 
   @staticmethod
   def __get_html_template() -> str:
@@ -52,9 +52,9 @@ class DocGenerator:
   @staticmethod
   def __insert_icon() -> str:
     html = DocGenerator.__get_html_template()
-    icon_path  = FileUtil.mount_path("source", "zoe_doc", "zoe_doc_files") / "zoe_icon.png"
+    icon_path = FileUtil.FRAMEWORK_DIR / "zoe_doc" / "zoe_doc_files" / "zoe_icon.png"
     icon_bytes = FileUtil.read(icon_path)
-    icon_b64   = f"data:image/png;base64,{base64.b64encode(icon_bytes).decode()}" if icon_bytes else ""
+    icon_b64 = f"data:image/png;base64,{base64.b64encode(icon_bytes).decode()}" if icon_bytes else ""
     return HTMLGen.find_tag_and_insert(html, "ZOE_ICON", icon_b64)
 
   @staticmethod

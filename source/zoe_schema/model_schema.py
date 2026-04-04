@@ -22,6 +22,31 @@ class Model:
   def __getattr__(self: "Model", name: str) -> Any:
     raise AttributeError(f"'{type(self).__name__}' has no field '{name}'")
 
+  def __eq__(self: "Model", other: object) -> bool:
+    if not isinstance(other, Model):
+      return False
+    return self.to_dict() == other.to_dict()
+
+  def __hash__(self: "Model") -> int:
+    try:
+        return hash(frozenset(self.to_dict().items()))
+    except TypeError:
+        return hash(id(self))
+
+  def clone(self, **overrides) -> "Model":
+    data = self.to_dict()
+    data.update(overrides)
+    return self.__class__.create(**data)
+
+  @classmethod
+  def create(cls, **kwargs) -> "Model":
+    from zoe_schema.model_engine import ModelEngine
+    return ModelEngine.validate_and_create(cls, kwargs)
+
+  @classmethod
+  def from_dict(cls, data: dict) -> "Model":
+      return cls.create(**data)
+
   @property
   def is_strict(self: "Model") -> bool:
     return self._Model__strict
@@ -50,6 +75,22 @@ class Model:
   @classmethod
   def is_model(cls, class_reference: type) -> bool:
     return issubclass(class_reference, Model)
+
+  def __str__(self: "Model") -> str:
+    fields = "\n  ".join(
+        f"{k}: {v}"
+        for k, v in self.__dict__.items()
+        if not k.startswith("_")
+    )
+    return f"{self.__class__.__name__}:\n  {fields}"
+
+  def __repr__(self: "Model") -> str:
+    fields = ", ".join(
+        f"{k}={repr(v)}"
+        for k, v in self.__dict__.items()
+        if not k.startswith("_")
+    )
+    return f"{self.__class__.__name__}({fields})"
 
 def Strict(cls: Type[Model]) -> Type[Model]:
   if not (isinstance(cls, type) and issubclass(cls, Model)):
