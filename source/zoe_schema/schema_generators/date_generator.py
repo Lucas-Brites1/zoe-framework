@@ -90,8 +90,10 @@ class Date:
             milliseconds: float = 0,
             as_: DateFormat = DateFormat.DATETIME,
             from_datetime: datetime.datetime | None = None,
+            timezone: datetime.tzinfo | None = None
         ) -> None:
             self.fmt   = as_
+            self.tz = timezone
             self.delta = datetime.timedelta(
                 weeks=weeks, days=days, hours=hours,
                 minutes=minutes, seconds=seconds,
@@ -100,5 +102,5 @@ class Date:
             self._from = from_datetime
 
         def generate(self, *args, **kwargs) -> Any:
-            base = self._from if self._from is not None else datetime.datetime.now()
+            base = self._from if self._from is not None else datetime.datetime.now(tz=self.tz)
             return self.fmt.convert(base + self.delta)
