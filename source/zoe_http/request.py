@@ -20,11 +20,12 @@ class Request:
         self.__method: HttpMethod
         self.__route: str
         self.__http_version: str
-        self.__parse_request_line(self.__header._request_line)
 
         self.__form_params = FormParams()
         self.__query_params = QueryParams()
         self.__path_params = PathParams()
+        self.__parse_request_line(self.__header._request_line)
+
         self.__body: Body = Body.empty()
         self.__multipart: Multipart = Multipart.empty()
 
