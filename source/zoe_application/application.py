@@ -6,6 +6,7 @@ from zoe_http.middleware import Middleware
 from zoe_doc.doc_generator import DocGenerator
 from zoe_doc.doc_registry import DocRegistry
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
+from zoe_exceptions.schemas_exceptions.exc_aggregate import ZoeSchemaAggregateException
 from zoe_exceptions.http_exceptions.exc_domain import DomainException
 from zoe_error_handler.error_handler_protocol import ErrorHandler
 from zoe_error_handler.registry import DomainErrorDispatcher
@@ -105,6 +106,9 @@ class App:
 
         except ZoeHttpException as exc:
             return exc.to_response()
+
+        except ZoeSchemaAggregateException as schema_exc:
+          return schema_exc.to_response()
 
         except Exception as exc:
             return InternalServerException(detail=str(exc)).to_response()

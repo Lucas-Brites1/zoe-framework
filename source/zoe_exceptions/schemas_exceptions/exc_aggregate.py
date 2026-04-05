@@ -7,13 +7,13 @@ class ZoeSchemaAggregateException(Exception):
         self.errors = errors
         super().__init__(f"{len(errors)} validation error(s) occurred.")
 
-    def to_response(self, model_name: str) -> Response:
+    def to_response(self, model_name: str | None = None) -> Response:
         return Response.json(
             http_code=HttpCode.BAD_REQUEST,
             body={
                 "error": {
                     "type": "SCHEMA_VALIDATION_ERROR",
-                    "model": model_name,
+                    "model": model_name or "undefined",
                     "count": len(self.errors),
                     "errors": [
                         {
