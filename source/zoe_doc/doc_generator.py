@@ -9,7 +9,6 @@ T = TypeVar('T')
 
 class DocGenerator:
   _TEMPLATE_PATH: Path = FileUtil.FRAMEWORK_DIR.joinpath("zoe_doc", "zoe_doc_files") / "static_page.html"
-  print(_TEMPLATE_PATH)
   _OUTPUT_PATH: Path = FileUtil.WORKING_DIR / "docs" / "generated_docs.html"
 
   @staticmethod

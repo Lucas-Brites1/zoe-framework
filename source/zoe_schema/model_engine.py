@@ -35,13 +35,11 @@ class ModelEngine:
         if errors:
             raise ZoeSchemaAggregateException(errors=errors)
 
-
         return model_class(**ModelEngine.__processed_data(model_info=model_info))
 
     @staticmethod
     def __processed_data(model_info: ModelInfo) -> dict[str, Any]:
         processed_data_dict: dict[str, Any] = {}
-
         for field_name, field_info in model_info.model_fields.items():
             processed_data_dict[field_name] = field_info.field_body_value
         return processed_data_dict
@@ -49,7 +47,6 @@ class ModelEngine:
     @staticmethod
     def __cache_model_structure(cache_key: str, model_info: ModelInfo) -> None:
         fields_structure = {}
-
         for field_name, field_info in model_info.model_fields.items():
             fields_structure[field_name] = {
                 'iscomputed': isinstance(field_info.field_object, _ComputedField),
@@ -57,7 +54,6 @@ class ModelEngine:
                 'field_is_optional': field_info.field_is_optional,
                 'field_object': field_info.field_object,
             }
-
         ModelEngine.__model_structure_cache[cache_key] = (
             model_info.model_name,
             model_info.model_class,
@@ -139,6 +135,37 @@ class ModelEngine:
         return []
 
     @staticmethod
+    def __resolve_list_of_models(
+        field_name: str,
+        value: list,
+        item_type: type,
+    ) -> tuple[list, list[ZoeSchemaException]]:
+        """Resolve a list where items can be dicts or already-instantiated Model objects."""
+        resolved = []
+        errors = []
+
+        for i, item in enumerate(value):
+            if isinstance(item, item_type):
+                resolved.append(item)
+            elif isinstance(item, dict):
+                try:
+                    nested = ModelEngine.validate_and_create(model_class=item_type, data=item)
+                    resolved.append(nested)
+                except ZoeSchemaAggregateException as e:
+                    errors.extend(e.errors)
+            else:
+                errors.append(ZoeSchemaException(
+                    field_name=field_name,
+                    message=(
+                        f"Field '{field_name}[{i}]' has invalid type. "
+                        f"Expected '{item_type.__name__}' or dict, but received '{type(item).__name__}'."
+                    ),
+                    error_code=ErrorCode.TYPE_MISMATCH
+                ))
+
+        return resolved, errors
+
+    @staticmethod
     def __validate_model_types(model_info: ModelInfo, data: dict) -> list[ZoeSchemaException]:
         type_errors: list[ZoeSchemaException] = []
 
@@ -155,7 +182,6 @@ class ModelEngine:
                 type_errors.append(ZoeSchemaException(field_name=field_name, message=message, error_code=ErrorCode.VALUE_MISMATCH))
                 continue
 
-
             if value is None and field_info.field_is_optional:
                 continue
 
@@ -163,46 +189,90 @@ class ModelEngine:
                 expected_type = field_info.field_type
                 actual_type = type(value)
 
+                # nested Model from dict
                 if isinstance(value, dict) and isinstance(expected_type, type) and Model.is_model(expected_type):
-                  try:
-                      nested_model = ModelEngine.validate_and_create(
-                          model_class=expected_type,
-                          data=value
-                          )
-                      field_info.field_body_value = nested_model
-                      continue
-                  except ZoeSchemaAggregateException as e:
-                      type_errors.extend(e.errors)
-                      continue
+                    try:
+                        nested_model = ModelEngine.validate_and_create(model_class=expected_type, data=value)
+                        field_info.field_body_value = nested_model
+                        continue
+                    except ZoeSchemaAggregateException as e:
+                        type_errors.extend(e.errors)
+                        continue
+
+                # already-instantiated nested Model
+                if isinstance(value, Model) and isinstance(expected_type, type) and Model.is_model(expected_type):
+                    if not isinstance(value, expected_type):
+                        type_errors.append(ZoeSchemaException(
+                            field_name=field_name,
+                            message=f"Field '{field_name}' has invalid type. Expected '{expected_type.__name__}', but received '{actual_type.__name__}'.",
+                            error_code=ErrorCode.TYPE_MISMATCH
+                        ))
+                    continue
 
                 origin = typing.get_origin(expected_type)
+
+                # list[SomeModel] — items can be dicts OR already-instantiated models
+                if origin is list:
+                    args = typing.get_args(expected_type)
+                    if args and isinstance(args[0], type) and Model.is_model(args[0]):
+                        if not isinstance(value, list):
+                            type_errors.append(ZoeSchemaException(
+                                field_name=field_name,
+                                message=f"Field '{field_name}' has invalid type. Expected 'list', but received '{actual_type.__name__}'.",
+                                error_code=ErrorCode.TYPE_MISMATCH
+                            ))
+                            continue
+                        resolved, errs = ModelEngine.__resolve_list_of_models(field_name, value, args[0])
+                        if errs:
+                            type_errors.extend(errs)
+                        else:
+                            field_info.field_body_value = resolved
+                        continue
+
                 if origin in (typing.Union, types.UnionType):
                     args = typing.get_args(expected_type)
-                    valid_types = tuple(
-                        typing.get_origin(t) or t
-                        for t in args
-                        if t is not type(None)
-                    )
 
-                    if not isinstance(value, valid_types):
-                        type_names = " | ".join(
-                            getattr(t, '__name__', str(t)) for t in valid_types
+                    # unwrap Optional[list[SomeModel]]
+                    for arg in args:
+                        if arg is type(None):
+                            continue
+                        arg_origin = typing.get_origin(arg)
+                        if arg_origin is list:
+                            inner_args = typing.get_args(arg)
+                            if inner_args and isinstance(inner_args[0], type) and Model.is_model(inner_args[0]):
+                                if isinstance(value, list):
+                                    resolved, errs = ModelEngine.__resolve_list_of_models(field_name, value, inner_args[0])
+                                    if errs:
+                                        type_errors.extend(errs)
+                                    else:
+                                        field_info.field_body_value = resolved
+                                    break
+                    else:
+                        valid_types = tuple(
+                            typing.get_origin(t) or t
+                            for t in args
+                            if t is not type(None)
                         )
-                        type_errors.append(ZoeSchemaException(
-                            field_name=field_name,
-                            message=f"Field '{field_name}' has invalid type. Expected one of [{type_names}], but received '{actual_type.__name__}'.",
-                            error_code=ErrorCode.TYPE_MISMATCH
-                        ))
-                else:
-                    check_type = typing.get_origin(expected_type) or expected_type
-                    if not isinstance(check_type, type):
-                        continue
-                    if actual_type != check_type:
-                        type_errors.append(ZoeSchemaException(
-                            field_name=field_name,
-                            message=f"Field '{field_name}' has invalid type. Expected '{check_type.__name__}', but received '{actual_type.__name__}'.",
-                            error_code=ErrorCode.TYPE_MISMATCH
-                        ))
+                        if not isinstance(value, valid_types):
+                            type_names = " | ".join(
+                                getattr(t, '__name__', str(t)) for t in valid_types
+                            )
+                            type_errors.append(ZoeSchemaException(
+                                field_name=field_name,
+                                message=f"Field '{field_name}' has invalid type. Expected one of [{type_names}], but received '{actual_type.__name__}'.",
+                                error_code=ErrorCode.TYPE_MISMATCH
+                            ))
+                    continue
+
+                check_type = typing.get_origin(expected_type) or expected_type
+                if not isinstance(check_type, type):
+                    continue
+                if actual_type != check_type:
+                    type_errors.append(ZoeSchemaException(
+                        field_name=field_name,
+                        message=f"Field '{field_name}' has invalid type. Expected '{check_type.__name__}', but received '{actual_type.__name__}'.",
+                        error_code=ErrorCode.TYPE_MISMATCH
+                    ))
 
         return type_errors
 
