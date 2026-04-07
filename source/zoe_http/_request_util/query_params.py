@@ -1,4 +1,4 @@
-from typing import Any, Callable, Type, TypeVar, overload
+from typing import Any, Callable, TypeVar, overload
 
 from zoe_exceptions.exc_internal_exc import InternalServerException, ZoeNonHttpError
 

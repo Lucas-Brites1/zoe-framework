@@ -1,6 +1,4 @@
-from typing import Any, Callable, Type, TypeVar, overload
-
-from zoe_exceptions.exc_internal_exc import InternalServerException, ZoeNonHttpError
+from typing import Any, Callable, TypeVar, overload
 
 T = TypeVar("T")
 D = TypeVar("D")
@@ -30,6 +28,12 @@ class PathParams:
                 return True
             if value.lower() in ("false", "0", "no"):
                 return False
+
+            from zoe_exceptions.exc_internal_exc import (
+                InternalServerException,
+                ZoeNonHttpError,
+            )
+
             raise InternalServerException.from_non_http_error(
                 ZoeNonHttpError(
                     why=f"Cannot cast '{value}' to bool",
