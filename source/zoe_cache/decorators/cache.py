@@ -8,7 +8,6 @@ from zoe_exceptions.exc_internal_exc import InternalServerException, ZoeNonHttpE
 from zoe_cache.cache_registry import _MISSING, CacheRegistry
 
 
-# tratar indices de cache (by)
 def cache(ttl: int | None = None, by: str | tuple[str, ...] | None = None) -> Callable:
     def decorator(func: Callable) -> Callable:
         func_part: str = CacheRegistry.genkey(ref=func)
@@ -27,7 +26,7 @@ def cache(ttl: int | None = None, by: str | tuple[str, ...] | None = None) -> Ca
                     raise InternalServerException.from_non_http_error(
                         ZoeNonHttpError(
                             why="Invalid cache index parameter",
-                            explain=f"Parameter '{by}' specified as cache index was not found in function '{fn_info.callable_name}' signature",
+                            explain=f"Parameter '{p}' specified as cache index was not found in function '{fn_info.callable_name}' signature",
                             fix=f"Make sure the cache index matches a parameter name in the function: {fn_info.callable_name}({valid_params}=value)",
                         )
                     )
@@ -39,6 +38,7 @@ def cache(ttl: int | None = None, by: str | tuple[str, ...] | None = None) -> Ca
         @wraps(func)
         def wrapped(*args, **kwargs) -> Any:
             all_args: dict = dict(zip(param_names, args[1:] if has_self else args))
+            all_args.update(kwargs)
 
             if by_params:
                 vary_str: str = "&".join(
