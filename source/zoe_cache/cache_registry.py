@@ -24,7 +24,16 @@ class CacheRegistry:
             CacheRegistry.__store[key] = (value, expires_at)
 
     @staticmethod
-    def invalidate(*key: str) -> None:
+    def invalidate(*prefixes: str) -> None:
         with CacheRegistry.__lock:
-            for k in key:
-                CacheRegistry.__store.pop(k, _MISSING)
+            for prefix in prefixes:
+                keys_to_remove = [
+                    k for k in CacheRegistry.__store if k.startswith(prefix)
+                ]
+                for k in keys_to_remove:
+                    CacheRegistry.__store.pop(k, None)
+
+    @staticmethod
+    def clear() -> None:
+        with CacheRegistry.__lock:
+            CacheRegistry.__store.clear()
