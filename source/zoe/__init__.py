@@ -138,6 +138,17 @@ from zoe_schema.schema_validators.pattern import Pattern
 from zoe_schema.schema_validators.range import Range
 from zoe_schema.schema_validators.required import Required
 
+
+def reset_container() -> None:
+    Container.reset()
+
+
+def reset_cache() -> None:
+    from zoe_cache.cache_registry import CacheRegistry
+
+    CacheRegistry.clear()
+
+
 __all__ = [  # type: ignore
     # Utils
     "Bytes",

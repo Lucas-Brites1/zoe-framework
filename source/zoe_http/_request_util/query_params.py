@@ -1,7 +1,5 @@
 from typing import Any, Callable, TypeVar, overload
 
-from zoe_exceptions.exc_internal_exc import InternalServerException, ZoeNonHttpError
-
 T = TypeVar("T")
 D = TypeVar("D")
 
@@ -23,6 +21,12 @@ class QueryParams:
                 return True
             if value.lower() in ("false", "0", "no"):
                 return False
+
+            from zoe_exceptions.exc_internal_exc import (
+                InternalServerException,
+                ZoeNonHttpError,
+            )
+
             raise InternalServerException.from_non_http_error(
                 ZoeNonHttpError(
                     why=f"Cannot cast '{value}' to bool",
