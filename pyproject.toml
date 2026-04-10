@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "zoe-framework"
 version = "0.5.7"
-description = "A lightweight zero external dependencies, Python web framework for building APIs"
+description = "A lightweight zero external dependencies, Python web framework for building APIs."
 authors = [{ name = "Lucas Silva Brites" }]
 readme = "README.md"
 requires-python = ">=3.11"
