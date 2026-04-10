@@ -1,9 +1,7 @@
-import threading
 from datetime import datetime
 
+from zoe_log.context import _local
 from zoe_log.loglevel import LogLevel, reset_color
-
-_local = threading.local()
 
 
 class Log:
@@ -28,7 +26,7 @@ class Log:
 
     @staticmethod
     def _final_message(level: LogLevel, message: str) -> str:
-        return Log._header(level=level) + f"\n{message}"
+        return Log._header(level=level) + f" | {message}"
 
     @staticmethod
     def info(message: str) -> None:

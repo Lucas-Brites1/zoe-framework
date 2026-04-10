@@ -1,10 +1,9 @@
-import threading
 from functools import wraps
 from typing import Callable, TypeVar, overload
 
 from zoe_di.inspector import Inspector, ObjectKind
 
-_local = threading.local()
+from zoe_log.context import _local
 
 C = TypeVar("C", bound=type)
 F = TypeVar("F", bound=Callable)
