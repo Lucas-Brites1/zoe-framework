@@ -10,8 +10,9 @@ from zoe_exceptions.exc_handler_abort import HandlerAbortException
 from zoe_di.container import Container
 from zoe_di.inspector import ModelInspector
 from zoe_http.hooks import Hook
+from zoe_utils.decorators.disable import  raise_disabled_error
 import typing
-from typing import cast, Coroutine, Any, Type
+from typing import cast, Coroutine, Any, Type, Callable
 import inspect
 
 class HandlerInvoker:
@@ -116,7 +117,8 @@ class HandlerInvoker:
                 raise e
 
             original = getattr(handler, "__zoe_original_handle__", None)
-            handle_fn: typing.Callable        = original if original is not None else handler.handle
+            handle_fn: Callable        = original if original is not None else handler.handle
+            HandlerInvoker._check_disabled(fn=handle_fn)
             is_coroutine: bool                = inspect.iscoroutinefunction(handle_fn)
             is_bound_method: bool = hasattr(handle_fn, "__self__")
 
@@ -166,3 +168,31 @@ class HandlerInvoker:
             return result
         finally:
             Container._close_scope()
+
+    @staticmethod
+    def _check_disabled(fn: Callable) -> None:
+        is_disabled: bool = getattr(fn, "__disabled__", False)
+
+        if is_disabled:
+            reason: str | None = getattr(fn, "__disabled_reason__", None)
+            fn_name: str = fn.__name__
+
+            from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException, HttpCode
+
+            message = f"Handler '{fn_name}' is disabled"
+            if reason:
+                message += f": {reason}"
+
+            raise ZoeHttpException(
+                message={
+                    "error": "Handler Disabled",
+                    "handler": fn_name,
+                    "reason": reason or "No reason provided",
+                    "details": [
+                        f"The handler '{fn_name}' has been disabled and cannot be executed.",
+                        "This is usually temporary due to maintenance or deprecation.",
+                        "Please contact the API administrator for more information."
+                    ]
+                },
+                status_code=HttpCode.SERVICE_UNAVAILABLE
+            )

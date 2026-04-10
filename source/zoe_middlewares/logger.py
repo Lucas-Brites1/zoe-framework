@@ -1,3 +1,5 @@
+from zoe_application.zoe_metadata import Zoe
+from zoe_di.container import Container
 from zoe_http.middleware import Middleware
 from zoe_http.request import Request
 from zoe_http.response import Response
@@ -72,7 +74,7 @@ class Logger:
             app.use(Logger(application_name="MyApp", verbose=True))
         ```
         """
-        self.__name = application_name
+        self.__name = application_name or Container.resolve(ref=Zoe).appname
         self.__verbose = verbose
         self.__big_payload_warn: bool = True
         self.__big_payload_threshold: Bytes = Bytes.from_kb(n=10) # > 10KiB warning (1024 * 10 bytes)

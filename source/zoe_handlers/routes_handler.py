@@ -4,7 +4,7 @@ from zoe_http.request import Request
 from zoe_http.code import HttpCode
 from zoe_router.router import Router
 from zoe_router.route import Route
-from zoe_application.zoe_metadata import ZoeMetadata
+from zoe_application.zoe_metadata import Zoe
 
 class RoutesHandler(Handler):
     def __init__(self: "RoutesHandler", routers: list[Router]):
@@ -35,7 +35,7 @@ class RoutesHandler(Handler):
         return endpoint
 
     def handle(self: "RoutesHandler", request: Request) -> Response:
-        if not ZoeMetadata.is_debug():
+        if not Zoe.instance.debug:
             return Response.json(
                 http_code=HttpCode.NOT_FOUND,
                 body={"error": "Not available outside debug mode."}

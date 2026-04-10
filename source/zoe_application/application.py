@@ -1,6 +1,5 @@
 from zoe_http.request import Request
 from zoe_http.response import Response
-from zoe_router.router import Router
 from zoe_router.router import Route, Routes, Router
 from zoe_http.middleware import Middleware
 from zoe_doc.doc_generator import DocGenerator
@@ -14,6 +13,7 @@ from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from zoe_exceptions.exc_internal_exc import InternalServerException
 from zoe_exceptions.http_exceptions.exc_not_found import RouteNotFoundException
 from typing import Callable, cast, Awaitable
+from zoe_application.zoe_metadata import  Zoe, Config
 import inspect
 
 class App:
@@ -24,7 +24,17 @@ class App:
         self.__startup_callables: list[Callable] = []
         self.__shutdown_callables: list[Callable] = []
         self.__documentation_generated: bool = False
+        self.__zoe_metadata: Zoe = Zoe.instance
+        self.__zoe_metadata.__app_chain__ = self
         self.__application_builtin_handlers()
+
+    @property
+    def configure(self) -> Config:
+        return self.__zoe_metadata.configure
+
+    def lconf(self, callback: Callable) -> "App":
+        callback(self.__zoe_metadata.configure)
+        return self
 
     def listen(self: "App", host: str = "0.0.0.0", port: int = 8080, **kwargs) -> None:
         from zoe_net.server import Server
@@ -108,10 +118,15 @@ class App:
             return exc.to_response()
 
         except ZoeSchemaAggregateException as schema_exc:
-          return schema_exc.to_response()
+          return schema_exc.to_response(detailed=self.__zoe_metadata.debug)
 
         except Exception as exc:
-            return InternalServerException(detail=str(exc)).to_response()
+            if self.__zoe_metadata.debug:
+                return InternalServerException(detail=str(exc)).to_response()
+            else:
+                return InternalServerException(
+                    detail="An internal error occurred"
+                ).to_response()
 
     def __application_builtin_handlers(self: "App") -> None:
         from zoe_handlers.health_check_handler import HealthCheck

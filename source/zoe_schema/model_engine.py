@@ -196,6 +196,8 @@ class ModelEngine:
                         field_info.field_body_value = nested_model
                         continue
                     except ZoeSchemaAggregateException as e:
+                        for error in e.errors:
+                            error.field_name = f"{field_name}.{error.field_name}"
                         type_errors.extend(e.errors)
                         continue
 

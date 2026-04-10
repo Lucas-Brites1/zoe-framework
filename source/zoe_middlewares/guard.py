@@ -4,7 +4,6 @@ from zoe_http.request import Request
 from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
 from zoe_http.code import HttpCode
 from zoe_middlewares.guard_strategy import GuardStrategy
-from zoe_application.zoe_metadata import ZoeMetadata
 
 from typing import Callable
 

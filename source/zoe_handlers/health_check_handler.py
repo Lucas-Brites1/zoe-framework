@@ -3,7 +3,7 @@ from zoe_http.response import Response
 from zoe_http.request import Request
 from zoe_http.code import HttpCode
 from zoe_router.route import Route
-from zoe_application.zoe_metadata import ZoeMetadata
+from zoe_application.zoe_metadata import Zoe
 import time
 
 _start_time: float = time.time()
@@ -22,8 +22,8 @@ class HealthCheck(Handler):
                 http_code=HttpCode.OK,
                 body={
                 "status": "healthy",
-                "version": ZoeMetadata.version(),
+                "version": Zoe.instance.version,
                 "uptime": f"{hours}h {minutes}m {seconds}s",
-                "framework": ZoeMetadata.framework(),
+                "framework": "Zoe",
                 }
             )
