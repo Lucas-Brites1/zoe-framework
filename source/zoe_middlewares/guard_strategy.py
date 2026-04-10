@@ -1,9 +1,11 @@
+import hmac
+import re
+from typing import Protocol
+
 from zoe_http.request import Request
 from zoe_jwt.token_validator import TokenValidator
-from typing import Protocol
-import hmac
 
-#'Bearer', 'Basic', 'ApiKey' # ver como funcionma para  implementar jwt e implementar zoe_jwt
+
 class GuardStrategy(Protocol):
     """
     Protocol (interface) that all Guard strategies must implement.
@@ -34,14 +36,24 @@ class GuardStrategy(Protocol):
             return request.client_ip in self.__allowed_ips
     ```
     """
+
     def guard(self: "GuardStrategy", request: Request) -> bool:
         raise NotImplementedError()
 
+
 class BearerStrategy:
-    def __init__(self: "BearerStrategy", validator: TokenValidator) -> None:
+    def __init__(
+        self: "BearerStrategy",
+        validator: TokenValidator,
+        exclude: list[str] | None = None,
+    ) -> None:
         self.validator = validator
+        self._exclude = exclude or []
 
     def guard(self: "BearerStrategy", request: Request) -> bool:
+        if self._is_excluded(route=request.route):
+            return True
+
         if request.auth.scheme != "Bearer":
             return False
 
@@ -57,28 +69,38 @@ class BearerStrategy:
         except Exception:
             return False
 
+    def _is_excluded(self, route: str) -> bool:
+        for pattern in self._exclude:
+            regex = re.sub(r"\{[^}]+\}", r"[^/]+", pattern)
+            if re.fullmatch(regex, route):
+                return True
+        return False
+
+
 class BasicStrategy:
     def __init__(self: "BasicStrategy", username: str, password: str) -> None:
-      self.__username = username
-      self.__password = password
+        self.__username = username
+        self.__password = password
 
     def guard(self, request: Request) -> bool:
-      credentials = request.auth.basic_credentials
-      if not credentials:
-          return False
-      user_ok = hmac.compare_digest(credentials[0], self.__username)
-      pass_ok = hmac.compare_digest(credentials[1], self.__password)
-      return user_ok and pass_ok
+        credentials = request.auth.basic_credentials
+        if not credentials:
+            return False
+        user_ok = hmac.compare_digest(credentials[0], self.__username)
+        pass_ok = hmac.compare_digest(credentials[1], self.__password)
+        return user_ok and pass_ok
+
 
 class ApiKeyStrategy:
     def __init__(self: "ApiKeyStrategy", key: str):
         self.__key: str = key
 
     def guard(self: "ApiKeyStrategy", request: Request) -> bool:
-        apikey: str = request.auth.api_key # type: ignore
+        apikey: str = request.auth.api_key  # type: ignore
         if not apikey:
             return False
         return apikey == self.__key
+
 
 class AnyStrategy:
     def __init__(self: "AnyStrategy", strategies: list[GuardStrategy]) -> None:
@@ -89,6 +111,7 @@ class AnyStrategy:
             if strategy.guard(request):
                 return True
         return False
+
 
 class AllStrategy:
     def __init__(self: "AllStrategy", strategies: list[GuardStrategy]) -> None:
