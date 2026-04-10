@@ -86,6 +86,11 @@ from zoe_jwt.jwt_exceptions import (
 # Auth
 from zoe_jwt.jwt_hs256 import JWT_HS256, JWT_Claim
 from zoe_jwt.token_validator import TokenValidator
+
+# Logging
+from zoe_log.decorators import loggable, subloggable
+from zoe_log.log import Log
+from zoe_log.loglevel import LogLevel
 from zoe_middlewares.body_limiter import BodyLimiter
 from zoe_middlewares.cors import CORS
 from zoe_middlewares.guard import Guard
@@ -112,7 +117,10 @@ from zoe_router.route import Route
 # Router
 from zoe_router.router import Router
 from zoe_router.routes import Routes
+
+# Schema Classes Related
 from zoe_schema.computed_field_schema import ComputedField
+from zoe_schema.decorators import ensure_model
 from zoe_schema.field_schema import Field
 
 # Generators
@@ -187,6 +195,7 @@ __all__ = [  # type: ignore
     "Field",
     "Strict",
     "ComputedField",
+    "ensure_model",
     # Dependency Injection
     "Container",
     "Box",
@@ -218,6 +227,11 @@ __all__ = [  # type: ignore
     "JWT_HS256",
     "TokenValidator",
     "JWT_Claim",
+    # Loggin
+    "Log",
+    "LogLevel",
+    "loggable",
+    "subloggable",
     # Middlewares
     "Logger",
     "Limiter",
