@@ -1,10 +1,12 @@
+from datetime import datetime
+from typing import Callable
+
+from zoe_http.code import HttpCode
 from zoe_http.middleware_async import AsyncMiddleware
 from zoe_http.request import Request
 from zoe_http.response import Response
-from zoe_http.code import HttpCode
 from zoe_middlewares.limiter_client import LimiterClient
-from typing import Callable, Any
-from datetime import datetime
+
 
 class Limiter(AsyncMiddleware):
     def __init__(self, max_requests: int = 100, window_seconds: int = 60) -> None:
@@ -42,24 +44,24 @@ class Limiter(AsyncMiddleware):
         return self.__clients.__contains__(ip)
 
     async def process_locked(self, request: Request, next: Callable) -> Response:
-      req_ip = request.client_ip
+        req_ip = request.state.client_ip
 
-      async with self.lock:
-          if not self.__client_exists(ip=req_ip):
-              self.__clients[req_ip] = LimiterClient(ip=req_ip)
+        async with self.lock:
+            if not self.__client_exists(ip=req_ip):
+                self.__clients[req_ip] = LimiterClient(ip=req_ip)
 
-          client = self.__clients[req_ip]
-          elapsed_time = (datetime.now() - client.first_request_at).seconds
+            client = self.__clients[req_ip]
+            elapsed_time = (datetime.now() - client.first_request_at).seconds
 
-          if elapsed_time > self.__window_seconds:
-              client.reset()
+            if elapsed_time > self.__window_seconds:
+                client.reset()
 
-          client.increment()
-          exceeded = client.request_count > self.__max_requests
+            client.increment()
+            exceeded = client.request_count > self.__max_requests
 
-      if exceeded:
-          response = Response(http_code=HttpCode.TOO_MANY_REQUESTS)
-          response.headers.add("Connection", "close")
-          return response
+        if exceeded:
+            response = Response(http_code=HttpCode.TOO_MANY_REQUESTS)
+            response.headers.add("Connection", "close")
+            return response
 
-      return await next(request)
+        return await next(request)
