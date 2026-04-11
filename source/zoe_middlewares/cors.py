@@ -2,7 +2,6 @@ from typing import Callable
 
 from zoe_http.code import HttpCode
 from zoe_http.method import HttpMethod
-from zoe_http.middleware import Middleware
 from zoe_http.request import Request
 from zoe_http.response import Response
 
@@ -96,7 +95,11 @@ class CORS:
                 return self.__create_response_with_allow_headers(origin=origin)
             return Response(http_code=HttpCode.OK)
 
-        response = await next(request)
+        try:
+            response = await next(request)
+        except Exception as _:
+            response = Response(http_code=HttpCode.INTERNAL_SERVER_ERROR)
+
         if who_is_allowed:
             response.add_header(name="Access-Control-Allow-Origin", value=origin or "*")
             if self.__allow_credentials:
