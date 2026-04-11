@@ -1,12 +1,20 @@
+from typing import Callable
+
+from zoe_http.code import HttpCode
+from zoe_http.method import HttpMethod
 from zoe_http.middleware import Middleware
 from zoe_http.request import Request
 from zoe_http.response import Response
-from zoe_http.code import HttpCode
-from zoe_http.method import HttpMethod
-from typing import Callable
+
 
 class CORS:
-    def __init__(self, allowed_origins: list[str] = ["*"], allowed_methods: list[HttpMethod] | None = None, allowed_headers: list[str] | None = None):
+    def __init__(
+        self,
+        allowed_origins: list[str] = ["*"],
+        allowed_methods: list[HttpMethod] | None = None,
+        allowed_headers: list[str] | None = None,
+        allow_credentials: bool = False,
+    ):
         """
         Middleware that enables Cross-Origin Resource Sharing (CORS).
         ---
@@ -45,29 +53,43 @@ class CORS:
         """
         self.__allowed_origins = allowed_origins
         self.__allowed_methods = allowed_methods or [
-            HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT,
-            HttpMethod.PATCH, HttpMethod.DELETE, HttpMethod.OPTIONS
+            HttpMethod.GET,
+            HttpMethod.POST,
+            HttpMethod.PUT,
+            HttpMethod.PATCH,
+            HttpMethod.DELETE,
+            HttpMethod.OPTIONS,
         ]
         self.__allowed_headers = allowed_headers or [
-            "Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"
+            "Authorization",
+            "Content-Type",
+            "Accept",
+            "Origin",
+            "X-Requested-With",
         ]
+        self.__allow_credentials = allow_credentials
 
     def __create_response_with_allow_headers(self, origin: str | None) -> Response:
         allow_prefix: str = "Access-Control-Allow"
-        response: Response =  Response(
-            http_code=HttpCode.OK,
-            headers={
-                f"{allow_prefix}-Origin": origin or "*",
-                f"{allow_prefix}-Methods": ", ".join([m.value for m in self.__allowed_methods]),
-                f"{allow_prefix}-Headers": ", ".join(self.__allowed_headers),
-                f"{allow_prefix}-Max-Age": "86400"
-            }
-        )
-        return response
+        headers: dict = {
+            f"{allow_prefix}-Origin": origin or "*",
+            f"{allow_prefix}-Methods": ", ".join(
+                [m.value for m in self.__allowed_methods]
+            ),
+            f"{allow_prefix}-Headers": ", ".join(self.__allowed_headers),
+            f"{allow_prefix}-Max-Age": "86400",
+        }
+
+        if self.__allow_credentials:
+            headers[f"{allow_prefix}-Credentials"] = "true"
+
+        return Response(http_code=HttpCode.OK, headers=headers)
 
     async def process(self, request: Request, next: Callable) -> Response:
         origin: str | None = request.headers.get(key="Origin", default="")
-        who_is_allowed: str = "*" in self.__allowed_origins or origin in self.__allowed_origins # type: ignore
+        who_is_allowed: str = (
+            "*" in self.__allowed_origins or origin in self.__allowed_origins
+        )  # type: ignore
 
         if request.method == HttpMethod.OPTIONS:
             if who_is_allowed:
@@ -77,4 +99,8 @@ class CORS:
         response = await next(request)
         if who_is_allowed:
             response.add_header(name="Access-Control-Allow-Origin", value=origin or "*")
+            if self.__allow_credentials:
+                response.add_header(
+                    name="Access-Control-Allow-Credentials", value="true"
+                )
         return response

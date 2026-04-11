@@ -1,18 +1,25 @@
 from urllib.parse import unquote
-from zoe_http.method import HttpMethod
-from zoe_http._request_util.query_params import QueryParams
-from zoe_http._request_util.path_params import PathParams
+
+from zoe_exceptions.http_exceptions.exc_malformed_request import (
+    MalformedRequestException,
+)
 from zoe_http._request_util.form_params import FormParams
-from zoe_http._request_util.request_body import Body
-from zoe_http._request_util.request_multipart import Multipart
+from zoe_http._request_util.path_params import PathParams
+from zoe_http._request_util.query_params import QueryParams
 from zoe_http._request_util.request_auth import Auth
+from zoe_http._request_util.request_body import Body
+from zoe_http._request_util.request_cookies import RequestCookie
 from zoe_http._request_util.request_headers import RequestHeaders
+from zoe_http._request_util.request_multipart import Multipart
 from zoe_http._request_util.request_state import RequestState
-from zoe_exceptions.http_exceptions.exc_malformed_request import MalformedRequestException
+from zoe_http.method import HttpMethod
 from zoe_schema.schema_generators.uuid_generator import UUID
 
+
 class Request:
-    def __init__(self: "Request", headers: RequestHeaders, body_bytes: bytes, client_ip: str) -> None:
+    def __init__(
+        self: "Request", headers: RequestHeaders, body_bytes: bytes, client_ip: str
+    ) -> None:
         self.__client_ip = client_ip
         self.__body_bytes = body_bytes
 
@@ -30,20 +37,18 @@ class Request:
         self.__multipart: Multipart = Multipart.empty()
 
         if self.__header.content_type is not None:
-          if "multipart/form-data" in self.__header.content_type:
-            self.__multipart = Multipart.from_request(
-                content_type=self.__header.content_type,
-                body_bytes=self.__body_bytes
-            )
-          else:
-            self.__body: Body = Body.from_request(
-                content_type=self.__header.content_type,
-                body_bytes=self.__body_bytes
-            )
+            if "multipart/form-data" in self.__header.content_type:
+                self.__multipart = Multipart.from_request(
+                    content_type=self.__header.content_type,
+                    body_bytes=self.__body_bytes,
+                )
+            else:
+                self.__body: Body = Body.from_request(
+                    content_type=self.__header.content_type,
+                    body_bytes=self.__body_bytes,
+                )
 
-        self.__auth: Auth = Auth(
-            authorization_header=self.headers.authorization
-        )
+        self.__auth: Auth = Auth(authorization_header=self.headers.authorization)
 
         self.__state: RequestState = RequestState(self._initial_states())
 
@@ -66,6 +71,10 @@ class Request:
     @property
     def headers(self: "Request") -> "RequestHeaders":
         return self.__header
+
+    @property
+    def cookies(self: "Request") -> "RequestCookie":
+        return self.__header.cookies
 
     @property
     def http_version(self: "Request") -> str:
@@ -93,6 +102,7 @@ class Request:
 
     def _initial_states(self: "Request") -> dict:
         from time import perf_counter
+
         states: dict = {}
         states["request_id"] = UUID().generate()
         states["request_started_at"] = perf_counter()
