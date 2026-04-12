@@ -24,11 +24,12 @@ class ResponseHeader:
         return self
 
     def _build(self, to_append: str) -> str:
-        if "content-length" not in {k.lower() for k in self.__headers}:
+        already_has_cl = "content-length" in to_append.lower()
+        if not already_has_cl and "content-length" not in {
+            k.lower() for k in self.__headers
+        }:
             self.__headers["Content-Length"] = "0"
-
         for header_name, header_value in self.__headers.items():
             to_append += f"{header_name}: {header_value}\r\n"
-
         to_append = self.__cokies._build(to_append=to_append)
         return to_append + "\r\n"

@@ -76,7 +76,7 @@ class CORS:
                 [m.value for m in self.__allowed_methods]
             ),
             f"{allow_prefix}-Headers": ", ".join(self.__allowed_headers),
-            f"{allow_prefix}-Max-Age": "86400",
+            "Access-Control-Max-Age": "86400",
         }
 
         if self.__allow_credentials:
