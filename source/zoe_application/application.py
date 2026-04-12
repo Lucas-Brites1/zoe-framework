@@ -1,20 +1,22 @@
-from zoe_http.request import Request
-from zoe_http.response import Response
-from zoe_router.router import Router
-from zoe_router.router import Route, Routes, Router
-from zoe_http.middleware import Middleware
+import inspect
+from typing import Awaitable, Callable, cast
+
+from zoe_application.zoe_metadata import Config, Zoe
 from zoe_doc.doc_generator import DocGenerator
 from zoe_doc.doc_registry import DocRegistry
-from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
-from zoe_exceptions.schemas_exceptions.exc_aggregate import ZoeSchemaAggregateException
-from zoe_exceptions.http_exceptions.exc_domain import DomainException
 from zoe_error_handler.error_handler_protocol import ErrorHandler
 from zoe_error_handler.registry import DomainErrorDispatcher
-from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
 from zoe_exceptions.exc_internal_exc import InternalServerException
+from zoe_exceptions.exc_non_http_internal_error import ZoeNonHttpError
+from zoe_exceptions.http_exceptions.exc_domain import DomainException
+from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
 from zoe_exceptions.http_exceptions.exc_not_found import RouteNotFoundException
-from typing import Callable, cast, Awaitable
-import inspect
+from zoe_exceptions.schemas_exceptions.exc_aggregate import ZoeSchemaAggregateException
+from zoe_http.middleware import Middleware
+from zoe_http.request import Request
+from zoe_http.response import Response
+from zoe_router.router import Route, Router, Routes
+
 
 class App:
     def __init__(self: "App") -> None:
@@ -24,22 +26,35 @@ class App:
         self.__startup_callables: list[Callable] = []
         self.__shutdown_callables: list[Callable] = []
         self.__documentation_generated: bool = False
+        self.__zoe_metadata: Zoe = Zoe.instance
+        self.__zoe_metadata.__app_chain__ = self
         self.__application_builtin_handlers()
+
+    @property
+    def configure(self) -> Config:
+        return self.__zoe_metadata.configure
+
+    def lconf(self, callback: Callable) -> "App":
+        callback(self.__zoe_metadata.configure)
+        return self
 
     def listen(self: "App", host: str = "0.0.0.0", port: int = 8080, **kwargs) -> None:
         from zoe_net.server import Server
+
         Server(application=self, host=host, port=port, **kwargs).run()
 
     def on_startup(self: "App"):
         def callable_wrapper(fn: Callable) -> Callable:
             self.__startup_callables.append(fn)
             return fn
+
         return callable_wrapper
 
     def on_shutdown(self: "App"):
         def callable_wrapper(fn: Callable) -> Callable:
             self.__shutdown_callables.append(fn)
             return fn
+
         return callable_wrapper
 
     def _run_all_startup_callables(self: "App") -> None:
@@ -55,7 +70,7 @@ class App:
             self.__base_router.add(route=to_add)
         elif isinstance(to_add, Routes):
             for route in to_add:
-              self.__base_router.add(route=route)
+                self.__base_router.add(route=route)
         elif isinstance(to_add, Router):
             self.__routers.append(to_add)
         elif isinstance(to_add, Middleware):
@@ -70,12 +85,13 @@ class App:
                     return response
             return RouteNotFoundException(request=request).to_response()
 
-        chain = call_handler # type: ignore
+        chain = call_handler  # type: ignore
         for middleware in reversed(self.__middlewares):
             previous = chain
+
             async def chain(req, m=middleware, p=previous):
                 if inspect.iscoroutinefunction(m.process):
-                  return await m.process(req, p)
+                    return await m.process(req, p)
                 return m.process(req, p)
 
         try:
@@ -83,46 +99,48 @@ class App:
 
         except ZoeNonHttpError as non_http_exc:
             return InternalServerException.from_non_http_error(
-                error=non_http_exc,
-                request=request
+                error=non_http_exc, request=request
             ).to_response()
 
         except DomainException as dexc:
-          handler_error: ErrorHandler | None = DomainErrorDispatcher .resolve(exc=dexc)
+            handler_error: ErrorHandler | None = DomainErrorDispatcher.resolve(exc=dexc)
 
-          if handler_error is not None:
-            if inspect.iscoroutinefunction(handler_error):
-                return await cast(
-                    Awaitable[Response],
-                    handler_error(exception=dexc, request=request)
+            if handler_error is not None:
+                if inspect.iscoroutinefunction(handler_error):
+                    return await cast(
+                        Awaitable[Response],
+                        handler_error(exception=dexc, request=request),
                     )
 
-            return cast(
-                Response,
-                handler_error(exception=dexc, request=request)
-                )
+                return cast(Response, handler_error(exception=dexc, request=request))
 
-          return dexc.to_response(request)
+            return dexc.to_response(request)
 
         except ZoeHttpException as exc:
             return exc.to_response()
 
         except ZoeSchemaAggregateException as schema_exc:
-          return schema_exc.to_response()
+            return schema_exc.to_response(detailed=self.__zoe_metadata.debug)
 
         except Exception as exc:
-            return InternalServerException(detail=str(exc)).to_response()
+            if self.__zoe_metadata.debug:
+                return InternalServerException(detail=str(exc)).to_response()
+            else:
+                return InternalServerException(
+                    detail="An internal error occurred"
+                ).to_response()
 
     def __application_builtin_handlers(self: "App") -> None:
+        from zoe_handlers.docs_expose import DocExpose
         from zoe_handlers.health_check_handler import HealthCheck
         from zoe_handlers.routes_handler import RoutesHandler
-        from zoe_handlers.docs_expose import  DocExpose
+
         self.__base_router.add(HealthCheck.get_handler())
         self.__base_router.add(RoutesHandler.get_handler(routers=self.__routers))
         self.__base_router.add(DocExpose.get_handler())
 
     def _delete_merged_routers(self: "App") -> None:
-      self.__routers = [r for r in self.__routers if not r.is_merged]
+        self.__routers = [r for r in self.__routers if not r.is_merged]
 
     @property
     def documentation(self: "App") -> None:
@@ -149,25 +167,25 @@ class App:
                 "current-age": "5 years",
                 "breed": "Golden Retriever",
                 "likes": "to play with toys and take a nap",
-                "fun-fact": "the framework was named after her 🐾"
+                "fun-fact": "the framework was named after her 🐾",
             },
             "Mayla": {
                 "current-age": "4 years",
                 "breed": "Golden Retriever",
-                "likes": "to walk and take a nap"
+                "likes": "to walk and take a nap",
             },
             "Clara": {
                 "current-age": "2 years",
                 "breed": "Dachshund",
-                "likes": "obsessed with playing fetch"
-            }
+                "likes": "obsessed with playing fetch",
+            },
         }
 
         print("\033[93m")
         print("  🐾 The dogs behind Zoe Framework:\n")
         for name, info in my_dogs.items():
             print(f"  {name}")
-            for k, v in info.items(): #type: ignore
+            for k, v in info.items():  # type: ignore
                 print(f"    {k}: {v}")
             print()
         print(f"  All healthy and happy in {this_year} 🧡")
