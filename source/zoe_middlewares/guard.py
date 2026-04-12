@@ -1,15 +1,19 @@
-from zoe_http.middleware import Middleware
-from zoe_http.response import Response
-from zoe_http.request import Request
-from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
-from zoe_http.code import HttpCode
-from zoe_middlewares.guard_strategy import GuardStrategy
-from zoe_application.zoe_metadata import ZoeMetadata
-
 from typing import Callable
 
+from zoe_exceptions.http_exceptions.exc_http_base import ZoeHttpException
+from zoe_http.code import HttpCode
+from zoe_http.middleware import Middleware
+from zoe_http.request import Request
+from zoe_http.response import Response
+from zoe_middlewares.guard_strategy import GuardStrategy
+
+
 class Guard:
-    def __init__(self: "Guard", strategy: GuardStrategy, unauthorized_message: str = "Unauthorized"):
+    def __init__(
+        self: "Guard",
+        strategy: GuardStrategy,
+        unauthorized_message: str = "Unauthorized",
+    ):
         """
         Middleware that protects routes from unauthorized access.
         ---
@@ -54,9 +58,8 @@ class Guard:
         self.__message = unauthorized_message
 
     async def process(self: "Guard", request: Request, next: Callable) -> Response:
-      if not self.__strategy.guard(request):
+        if not self.__strategy.guard(request):
             return ZoeHttpException(
-                message=self.__message,
-                status_code=HttpCode.UNAUTHORIZED
+                message=self.__message, status_code=HttpCode.UNAUTHORIZED
             ).to_response()
-      return await next(request)
+        return await next(request)

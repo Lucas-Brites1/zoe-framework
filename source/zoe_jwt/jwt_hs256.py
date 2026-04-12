@@ -1,25 +1,27 @@
-from zoe_jwt.jwt_exceptions import (
-    InvalidTokenError,
-    InvalidSignatureError,
-    ExpiredTokenError,
-    InvalidAlgorithmError,
-    TokenNotYetValidError,
-    MissingIssuerError, UntrustedIssuerError,
-    UnauthorizedAudienceError
-)
-
-from zoe_schema.schema_generators.date_generator import Date, DateFormat
-from zoe_schema.schema_generators.uuid_generator import UUID
-from zoe_jwt.token_validator import TokenValidator
-from typing import Callable, Any, Optional
+import base64
+import hmac
 from hashlib import sha256
 from json import dumps, loads
-import hmac
-import base64
+from typing import Any, Callable, Optional
+
+from zoe_jwt.jwt_exceptions import (
+    ExpiredTokenError,
+    InvalidAlgorithmError,
+    InvalidSignatureError,
+    InvalidTokenError,
+    MissingIssuerError,
+    TokenNotYetValidError,
+    UnauthorizedAudienceError,
+    UntrustedIssuerError,
+)
+from zoe_jwt.token_validator import TokenValidator
+from zoe_schema.schema_generators.date_generator import Date, DateFormat
+from zoe_schema.schema_generators.uuid_generator import UUID
 
 
 def b64url_encode(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode("utf-8")
+
 
 def b64url_decode(data: str) -> bytes:
     padding = "=" * (-len(data) % 4)
@@ -28,12 +30,14 @@ def b64url_decode(data: str) -> bytes:
 
 ValueValidator = Callable[[Any], bool]
 
-class JWT_Claim:
-    def __init__(self,
-                 key: str,
-                 value: Any,
-                 value_validator: Optional[ValueValidator] = None,
-                ):
+
+class JwtClaim:
+    def __init__(
+        self,
+        key: str,
+        value: Any,
+        value_validator: Optional[ValueValidator] = None,
+    ):
         self._key = key
         self._value = value
         self._validator = value_validator
@@ -44,33 +48,36 @@ class JWT_Claim:
 
         if self._validator is not None:
             if not self._validator(payload[self._key]):
-                raise InvalidTokenError(f"Claim '{self._key}' not pass after validation call")
+                raise InvalidTokenError(
+                    f"Claim '{self._key}' not pass after validation call"
+                )
 
         elif payload[self._key] != self._value:
             raise InvalidTokenError(f"Invalid claim '{self._key}'")
 
     @staticmethod
-    def from_claims(claims: list["JWT_Claim"]) -> dict:
+    def from_claims(claims: list["JwtClaim"]) -> dict:
         claims_dict = {}
         for claim in claims:
             claims_dict[claim._key] = claim._value
 
         return claims_dict
 
-class JWT_HS256(TokenValidator):
+
+class JwtHS256(TokenValidator):
     def __init__(
         self,
         secret: str,
         issued_by: str,
         expires_min: int,
-        claims: list[JWT_Claim] | None = None,
-        audience: list[str] | None = None
+        claims: list[JwtClaim] | None = None,
+        audience: list[str] | None = None,
     ) -> None:
         self._secret: str = secret
         self._expires_min: int = expires_min
         self._issued_by: str = issued_by
         self._audience: list[str] | None = audience
-        self._claims: list[JWT_Claim] = claims or []
+        self._claims: list[JwtClaim] = claims or []
 
     def __build_payload(self, payload: dict) -> tuple[dict, dict]:
         header = {
@@ -81,20 +88,20 @@ class JWT_HS256(TokenValidator):
         date = Date.Now(as_=DateFormat.UNIX_TIMESTAMP)
         formatted_now = date.generate()
 
-        all_claims: dict = JWT_Claim.from_claims(self._claims)
+        all_claims: dict = JwtClaim.from_claims(self._claims)
         full_payload = {
             **all_claims,
             **payload,
             "iat": formatted_now,
             "iss": self._issued_by,
-            **( {"aud": self._audience} if self._audience is not None else {} )
+            **({"aud": self._audience} if self._audience is not None else {}),
         }
 
         if "exp" not in full_payload:
             full_payload["exp"] = Date.After(
                 minutes=self._expires_min,
                 as_=DateFormat.UNIX_TIMESTAMP,
-                from_datetime=date.now
+                from_datetime=date.now,
             ).generate()
 
         if "jti" not in full_payload:
@@ -104,9 +111,7 @@ class JWT_HS256(TokenValidator):
 
     def _validate_header(self, header: dict) -> None:
         if header.get("alg") != "HS256":
-            raise InvalidAlgorithmError(
-                f"Expected HS256, got {header.get('alg')}"
-            )
+            raise InvalidAlgorithmError(f"Expected HS256, got {header.get('alg')}")
 
         if header.get("typ") != "JWT":
             raise InvalidTokenError(
@@ -116,9 +121,7 @@ class JWT_HS256(TokenValidator):
     def encode(self, payload: dict | None = None) -> str:
         header, full_payload = self.__build_payload(payload or {})
 
-        header_b64 = b64url_encode(
-            dumps(header, separators=(",", ":")).encode("utf-8")
-        )
+        header_b64 = b64url_encode(dumps(header, separators=(",", ":")).encode("utf-8"))
 
         payload_b64 = b64url_encode(
             dumps(full_payload, separators=(",", ":")).encode("utf-8")
@@ -164,7 +167,9 @@ class JWT_HS256(TokenValidator):
             raise InvalidSignatureError("Invalid token")
 
         try:
-            payload = loads(b64url_decode(payload_b64).decode("utf-8"))  # FIX: faltava .decode("utf-8")
+            payload = loads(
+                b64url_decode(payload_b64).decode("utf-8")
+            )  # FIX: faltava .decode("utf-8")
         except Exception:
             raise InvalidTokenError("Invalid payload encoding")
 
@@ -199,9 +204,7 @@ class JWT_HS256(TokenValidator):
             raise ExpiredTokenError(f"Token expired at {payload['exp']}")
 
         if "nbf" in payload and payload["nbf"] > now:
-            raise TokenNotYetValidError(
-                f"Token valid only after {payload['nbf']}"
-            )
+            raise TokenNotYetValidError(f"Token valid only after {payload['nbf']}")
 
         if "iat" in payload and payload["iat"] > now:
             raise InvalidTokenError("Token issued in the future")

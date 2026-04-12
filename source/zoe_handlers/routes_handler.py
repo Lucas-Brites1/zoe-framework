@@ -1,10 +1,11 @@
-from zoe_http.handler import Handler
-from zoe_http.response import Response
-from zoe_http.request import Request
+from zoe_application.zoe_metadata import Zoe
 from zoe_http.code import HttpCode
-from zoe_router.router import Router
+from zoe_http.handler import Handler
+from zoe_http.request import Request
+from zoe_http.response import Response
 from zoe_router.route import Route
-from zoe_application.zoe_metadata import ZoeMetadata
+from zoe_router.router import Router
+
 
 class RoutesHandler(Handler):
     def __init__(self: "RoutesHandler", routers: list[Router]):
@@ -21,11 +22,13 @@ class RoutesHandler(Handler):
             "routes": [
                 {
                     "method": route.method.value,
-                    "endpoint": RoutesHandler.__normalize(router.prefix + route.endpoint),
-                    "handler": route.handler.__class__.__name__
+                    "endpoint": RoutesHandler.__normalize(
+                        router.prefix + route.endpoint
+                    ),
+                    "handler": route.handler.__class__.__name__,
                 }
                 for route in router.assigned_routes
-            ]
+            ],
         }
 
     @staticmethod
@@ -35,16 +38,16 @@ class RoutesHandler(Handler):
         return endpoint
 
     def handle(self: "RoutesHandler", request: Request) -> Response:
-        if not ZoeMetadata.is_debug():
+        if not Zoe.instance.debug:
             return Response.json(
                 http_code=HttpCode.NOT_FOUND,
-                body={"error": "Not available outside debug mode."}
-                )
+                body={"error": "Not available outside debug mode."},
+            )
 
         return Response.json(
             http_code=HttpCode.OK,
             body={
                 "base-router": self.__serialize_router(self.routers[0]),
-                "api-routers": [self.__serialize_router(r) for r in self.routers[1:]]
-            }
+                "api-routers": [self.__serialize_router(r) for r in self.routers[1:]],
+            },
         )

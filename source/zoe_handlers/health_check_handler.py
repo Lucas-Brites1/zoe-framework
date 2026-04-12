@@ -1,12 +1,14 @@
-from zoe_http.handler import Handler
-from zoe_http.response import Response
-from zoe_http.request import Request
-from zoe_http.code import HttpCode
-from zoe_router.route import Route
-from zoe_application.zoe_metadata import ZoeMetadata
 import time
 
+from zoe_application.zoe_metadata import Zoe
+from zoe_http.code import HttpCode
+from zoe_http.handler import Handler
+from zoe_http.request import Request
+from zoe_http.response import Response
+from zoe_router.route import Route
+
 _start_time: float = time.time()
+
 
 class HealthCheck(Handler):
     @staticmethod
@@ -19,11 +21,11 @@ class HealthCheck(Handler):
         minutes, seconds = divmod(remainder, 60)
 
         return Response.json(
-                http_code=HttpCode.OK,
-                body={
+            http_code=HttpCode.OK,
+            body={
                 "status": "healthy",
-                "version": ZoeMetadata.version(),
+                "version": Zoe.version,
                 "uptime": f"{hours}h {minutes}m {seconds}s",
-                "framework": ZoeMetadata.framework(),
-                }
-            )
+                "framework": "Zoe",
+            },
+        )

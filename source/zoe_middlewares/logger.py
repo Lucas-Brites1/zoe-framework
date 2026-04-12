@@ -1,36 +1,41 @@
-from zoe_http.middleware import Middleware
+import time
+from datetime import datetime
+from typing import Callable
+
+from zoe_application.zoe_metadata import Zoe
+from zoe_di.container import Container
+from zoe_http.bytes import Bytes
+from zoe_http.code import HttpCode
 from zoe_http.request import Request
 from zoe_http.response import Response
-from zoe_http.code import HttpCode
-from zoe_http.bytes import Bytes
 
-from typing import Callable
-from datetime import datetime
-import time
 
 class _Color:
-    RESET   = "\033[0m"
-    BOLD    = "\033[1m"
-    GREY    = "\033[90m"
-    WHITE   = "\033[97m"
-    GREEN   = "\033[92m"
-    YELLOW  = "\033[93m"
-    RED     = "\033[91m"
-    CYAN    = "\033[96m"
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    GREY = "\033[90m"
+    WHITE = "\033[97m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    CYAN = "\033[96m"
     MAGENTA = "\033[95m"
-    BLUE    = "\033[94m"
+    BLUE = "\033[94m"
+
 
 _METHOD_COLORS = {
-    "GET":     _Color.GREEN,
-    "POST":    _Color.BLUE,
-    "PUT":     _Color.YELLOW,
-    "PATCH":   _Color.MAGENTA,
-    "DELETE":  _Color.RED,
+    "GET": _Color.GREEN,
+    "POST": _Color.BLUE,
+    "PUT": _Color.YELLOW,
+    "PATCH": _Color.MAGENTA,
+    "DELETE": _Color.RED,
 }
+
 
 def _method_tag(method: str) -> str:
     color = _METHOD_COLORS.get(method, _Color.WHITE)
     return f"{color}{_Color.BOLD}{method:<7}{_Color.RESET}"
+
 
 def _status_tag(status_code: HttpCode) -> str:
     code = status_code.value
@@ -46,6 +51,7 @@ def _status_tag(status_code: HttpCode) -> str:
         color = _Color.RED
     return f"{color}{_Color.BOLD}{code}{_Color.RESET}"
 
+
 def _duration_tag(ms: float) -> str:
     if ms < 100:
         color = _Color.GREEN
@@ -55,8 +61,11 @@ def _duration_tag(ms: float) -> str:
         color = _Color.RED
     return f"{color}{ms:.1f}ms{_Color.RESET}"
 
+
 class Logger:
-    def __init__(self, application_name: str | None = None, verbose: bool = False) -> None:
+    def __init__(
+        self, application_name: str | None = None, verbose: bool = False
+    ) -> None:
         """Middleware that logs every HTTP request processed by the server.
         ---
 
@@ -72,11 +81,12 @@ class Logger:
             app.use(Logger(application_name="MyApp", verbose=True))
         ```
         """
-        self.__name = application_name
+        self.__name = application_name or Container.resolve(ref=Zoe).appname
         self.__verbose = verbose
         self.__big_payload_warn: bool = True
-        self.__big_payload_threshold: Bytes = Bytes.from_kb(n=10) # > 10KiB warning (1024 * 10 bytes)
-
+        self.__big_payload_threshold: Bytes = Bytes.from_kb(
+            n=10
+        )  # > 10KiB warning (1024 * 10 bytes)
 
     def set_big_payload_threshold(self, threshold: Bytes) -> "Logger":
         """
@@ -108,16 +118,15 @@ class Logger:
         self.__big_payload_threshold = threshold
         return self
 
-
     def disable_big_payload_warning(self) -> "Logger":
         """
-            Disables the big payload warning in verbose mode.
-            ---
-            By default, Logger warns when a request body exceeds the threshold
-            instead of printing it - protecting the terminal from beign flooded
-            by large payloads. Call this method to turn off this protection.
+        Disables the big payload warning in verbose mode.
+        ---
+        By default, Logger warns when a request body exceeds the threshold
+        instead of printing it - protecting the terminal from beign flooded
+        by large payloads. Call this method to turn off this protection.
 
-            *Note:* not recommended for production environments.
+        *Note:* not recommended for production environments.
         """
         self.__big_payload_warn = False
         return self
@@ -130,26 +139,41 @@ class Logger:
 
         elapsed_ms = (time.perf_counter() - start) * 1000
 
-        prefix = f"{_Color.BOLD}{_Color.CYAN}[{self.__name}]{_Color.RESET} " if self.__name else ""
-        method  = _method_tag(request.method.value)
-        status  = _status_tag(response.status_code)
+        prefix = (
+            f"{_Color.BOLD}{_Color.CYAN}[{self.__name}]{_Color.RESET} "
+            if self.__name
+            else ""
+        )
+        method = _method_tag(request.method.value)
+        status = _status_tag(response.status_code)
         duration = _duration_tag(elapsed_ms)
-        ts      = f"{_Color.GREY}{timestamp}{_Color.RESET}"
-        route   = f"{_Color.WHITE}{request.route}{_Color.RESET}"
+        ts = f"{_Color.GREY}{timestamp}{_Color.RESET}"
+        route = f"{_Color.WHITE}{request.route}{_Color.RESET}"
 
         print(f"{prefix}{ts}  {method}  {route}  {status}  {duration}")
 
         if self.__verbose:
             if request.body:
                 if request.headers.content_length:
-                    if request.headers.content_length > self.__big_payload_threshold.value:
+                    if (
+                        request.headers.content_length
+                        > self.__big_payload_threshold.value
+                    ):
                         if self.__big_payload_warn:
-                            print(f"{_Color.GREY}body: {_Color.RED}[payload too large to display — {_Color.BOLD}{request.headers.content_length / 1024:.1f}KB]{_Color.RESET}")
-                            print(f"    > {_Color.GREY}hint: {_Color.GREEN}call Logger().disable_big_payload_warning() to suppress this message")
+                            print(
+                                f"{_Color.GREY}body: {_Color.RED}[payload too large to display — {_Color.BOLD}{request.headers.content_length / 1024:.1f}KB]{_Color.RESET}"
+                            )
+                            print(
+                                f"    > {_Color.GREY}hint: {_Color.GREEN}call Logger().disable_big_payload_warning() to suppress this message"
+                            )
                     else:
-                        print(f"  {_Color.GREY}body:    {request.body.data}{_Color.RESET}")
+                        print(
+                            f"  {_Color.GREY}body:    {request.body.data}{_Color.RESET}"
+                        )
                 else:
-                    print(f"{_Color.GREY}body: {_Color.YELLOW}[missing Content-Length header — skipping body log]{_Color.RESET}")
+                    print(
+                        f"{_Color.GREY}body: {_Color.YELLOW}[missing Content-Length header — skipping body log]{_Color.RESET}"
+                    )
 
             print(f"  {_Color.GREY}headers: {request.headers.values}{_Color.RESET}")
 

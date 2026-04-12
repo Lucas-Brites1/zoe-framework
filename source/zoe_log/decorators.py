@@ -21,6 +21,7 @@ def loggable(cls_or_func: C | F) -> C | F:
         @wraps(original_init)
         def new_init(self, *args, **kwargs):
             _local.context = cls_or_func.__qualname__
+            _local.subcontext = None
             original_init(self, *args, **kwargs)
 
         cls_or_func.__init__ = new_init  # type: ignore
@@ -30,6 +31,7 @@ def loggable(cls_or_func: C | F) -> C | F:
         @wraps(cls_or_func)  # type: ignore
         def new_func(*args, **kwargs):
             _local.context = cls_or_func.__qualname__  # type: ignore
+            _local.subcontext = None
             return cls_or_func(*args, **kwargs)  # type: ignore
 
         return new_func  # type: ignore
