@@ -84,7 +84,7 @@ from zoe_jwt.jwt_exceptions import (
 )
 
 # Auth
-from zoe_jwt.jwt_hs256 import JWT_HS256, JWT_Claim
+from zoe_jwt.jwt_hs256 import JwtClaim, JwtHS256
 from zoe_jwt.token_validator import TokenValidator
 
 # Logging
@@ -225,9 +225,9 @@ __all__ = [  # type: ignore
     "Token",
     "Slug",
     # Auth
-    "JWT_HS256",
+    "JwtHS256",
     "TokenValidator",
-    "JWT_Claim",
+    "JwtClaim",
     # Loggin
     "Log",
     "LogLevel",
